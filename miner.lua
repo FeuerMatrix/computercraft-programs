@@ -1,17 +1,21 @@
 -- CC Turtle Mining Program by FireMatrix
 
---whether the mine should be enterable by the player (aka be 2 blocks high)
-local PLAYER_ENTERABLE = false
 local LOG_DATA = true
 --Checks for easier ways back than just reversing every movement. Makes the turtle more fuel efficient.
 local RETURN_PATH_STRAIGHTENING = true
 --How many last movement positions away the turtle will consider when finding a better path.
 local RETURN_PATH_STRAIGHTENING_MAX_CHECKING_DISTANCE = 20
+local VEINMINE_IGNORE_BOUNDARIES = true
+-- if true, the turtle gets rid of items not in the list of blocks to mine
+local DELETE_UNWANTED_ITEMS = false
 
 local x, y, z = 0,0,0
 local xdir, zdir = 1,0
 
---this is only here so that lua syntax check ignores computer craft specific globals
+--boundaries of the area to mine
+local bound_x, bound_yp, bound_yn, bound_zp, bound_zn = 4, 2, 2, 4, 4
+
+--this is only here so that lua syntax check ignores computer craft specific globals --TODO delete on release
 turtle = turtle
 
 --prints current coordinates and face direction in the console
@@ -97,19 +101,6 @@ local function turnAround()
     zdir = -zdir
 end
 
--- mines a corridor of the given <length>
-local function mk_corridor_stripmine(length, upwards)
-    if upwards and PLAYER_ENTERABLE then
-        up()
-    elseif PLAYER_ENTERABLE then
-        down()
-    end
-    forward()
-    if length > 1 then
-        mk_corridor_stripmine(length-1, not upwards)
-    end
-end
-
 --TODO
 local function check()
     
@@ -139,9 +130,23 @@ local function mk_corridor_optimine(length)
     end
 end
 
+--moves the turtle to the position in the yz plane
+local function mv_yz(ypos, zpos)
+    --TODO
+end
+
 --starts the main mining program
 local function mine()
-    mk_corridor_optimine(2)
+    for y_current = -bound_yn, bound_yp, 1 do
+        local zDisplacement = (2 * y_current) % 5
+        local z_bound_lower_current_y = (math.floor(bound_zn / 5) + 1) * 5 - zDisplacement
+        z_bound_lower_current_y = z_bound_lower_current_y > bound_zn and z_bound_lower_current_y - 5 or z_bound_lower_current_y
+        
+        for z_current = -z_bound_lower_current_y, bound_zp, 5 do
+            mv_yz(y_current, z_current)
+            --TODO extend a shaft in x direction
+        end
+    end
 end
 
 --orients the turtle in the given x/z-directions
@@ -195,15 +200,7 @@ end
 
 --main program
 local function main()
-    forward(3)
-    left()
-    forward(2)
-    left()
-    forward(10)
-    left()
-    forward(6)
-    right()
-    down(1)
+    mine()
     returnToStart()
 end
 
