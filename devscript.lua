@@ -11,6 +11,9 @@ local RETURN_PATH_STRAIGHTENING_MAX_CHECKING_DISTANCE = 20
 local x, y, z = 0,0,0
 local xdir, zdir = 1,0
 
+--this is only here so that lua syntax check ignores computer craft specific globals
+turtle = turtle
+
 --prints current coordinates and face direction in the console
 local function logData()
     if not LOG_DATA then
@@ -103,7 +106,7 @@ local function mk_corridor_stripmine(length, upwards)
     end
     forward()
     if length > 1 then
-        mk_corridor(length-1, not upwards)
+        mk_corridor_stripmine(length-1, not upwards)
     end
 end
 
