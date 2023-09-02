@@ -1,6 +1,6 @@
--- CC Turtle Mining Program by FireMatrix
+-- CC Turtle Mining Program by FeuerMatrix
 
-local LOG_DATA = true
+local LOG_DATA = false
 --Checks for easier ways back than just reversing every movement. Makes the turtle more fuel efficient.
 local RETURN_PATH_STRAIGHTENING = true
 --How many last movement positions away the turtle will consider when finding a better path.
@@ -9,7 +9,7 @@ local VEINMINE_IGNORE_BOUNDARIES = true
 --if true, the turtle gets rid of items not in the list of blocks to mine
 local DELETE_UNWANTED_ITEMS = false
 
---(5/2) -> minimal mining to check EVERY block (8/3) -> assumes that most ore veins will extend in more than one direction. ~50% faster, but might miss some ore veins with only 1 or 2 blocks
+--(5/2) -> minimal mining to check EVERY block | (8/3) -> assumes that most ore veins will extend in more than one direction. ~50% faster, but might miss some ore veins with only 1 or 2 blocks
 --how much blocks to the next shaft on the same y-level
 local SHAFT_OFFSET_HORIZONTAL = 5
 --by how much horizontal shafts on neighbouring y-levels are offset to each other in z-direction
@@ -19,10 +19,11 @@ local x, y, z = 0,0,0
 local xdir, zdir = 1,0
 
 --boundaries of the area to mine
-local bound_x, bound_yp, bound_yn, bound_zp, bound_zn = 1, 2, 2, 5, 5
+local bound_x, bound_yp, bound_yn, bound_zp, bound_zn = 5, 2, 2, 5, 5
 
 --this is only here so that lua syntax check ignores computer craft specific globals --TODO delete on release
 turtle = turtle
+textutils = textutils
 
 --prints current coordinates and face direction in the console
 local function logData()
@@ -122,34 +123,57 @@ local function orientTowards(xOr, zOr)
     end
 end
 
---TODO
+--[[-
+    Checks if the block described in the given data is whitelisted for mining.
+    @param #table data The data of the block to check
+    @return #boolean
+]]
+local function is_block_whitelisted(data)
+    if data["tags"]["forge:ores"] then
+        return true
+    end
+    return false
+end
+
 local function check()
-    
+    local is_block, data = turtle.inspect()
+    if (not is_block) or (not is_block_whitelisted(data)) then
+        return
+    end
+    turtle.dig()
 end
 
---TODO
 local function checkUp()
-    
+    local is_block, data = turtle.inspectUp()
+    if (not is_block) or (not is_block_whitelisted(data)) then
+        return
+    end
+    turtle.digUp()
 end
 
---TODO
 local function checkDown()
-    
+    local is_block, data = turtle.inspectDown()
+    if (not is_block) or (not is_block_whitelisted(data)) then
+        return
+    end
+    turtle.digDown()
 end
 
 --moves <length> blocks forward, while checking all open faces for ores
 local function mk_corridor_optimine(length)
     for i = 1, length, 1 do
         forward()
+        check()
         checkUp()
         checkDown()
         left()
         check()
         turnAround()
         check()
-        left()
+        if i < length then
+            left()
+        end
     end
-    check()
 end
 
 local function mv_x(x_translation)
