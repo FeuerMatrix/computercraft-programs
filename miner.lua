@@ -6,14 +6,20 @@ local RETURN_PATH_STRAIGHTENING = true
 --How many last movement positions away the turtle will consider when finding a better path.
 local RETURN_PATH_STRAIGHTENING_MAX_CHECKING_DISTANCE = 20
 local VEINMINE_IGNORE_BOUNDARIES = true
--- if true, the turtle gets rid of items not in the list of blocks to mine
+--if true, the turtle gets rid of items not in the list of blocks to mine
 local DELETE_UNWANTED_ITEMS = false
+
+--(5/2) -> minimal mining to check EVERY block (8/3) -> assumes that most ore veins will extend in more than one direction. ~50% faster, but might miss some ore veins with only 1 or 2 blocks
+--how much blocks to the next shaft on the same y-level
+local SHAFT_OFFSET_HORIZONTAL = 5
+--by how much horizontal shafts on neighbouring y-levels are offset to each other in z-direction
+local SHAFT_OFFSET_ON_NEXT_Y = 2
 
 local x, y, z = 0,0,0
 local xdir, zdir = 1,0
 
 --boundaries of the area to mine
-local bound_x, bound_yp, bound_yn, bound_zp, bound_zn = 4, 2, 2, 4, 4
+local bound_x, bound_yp, bound_yn, bound_zp, bound_zn = 1, 2, 2, 5, 5
 
 --this is only here so that lua syntax check ignores computer craft specific globals --TODO delete on release
 turtle = turtle
@@ -197,11 +203,10 @@ end
 --starts the main mining program
 local function mine()
     for y_current = -bound_yn, bound_yp, 1 do
-        local zDisplacement = (2 * y_current) % 5
-        local z_bound_lower_current_y = (math.floor(bound_zn / 5) + 1) * 5 - zDisplacement
-        z_bound_lower_current_y = z_bound_lower_current_y > bound_zn and z_bound_lower_current_y - 5 or z_bound_lower_current_y
+        local z_bound_lower_current_y = (math.floor(bound_zn / SHAFT_OFFSET_HORIZONTAL) + 1) * SHAFT_OFFSET_HORIZONTAL - (SHAFT_OFFSET_ON_NEXT_Y * y_current) % SHAFT_OFFSET_HORIZONTAL
+        z_bound_lower_current_y = z_bound_lower_current_y > bound_zn and z_bound_lower_current_y - SHAFT_OFFSET_HORIZONTAL or z_bound_lower_current_y
         
-        for z_current = -z_bound_lower_current_y, bound_zp, 5 do
+        for z_current = -z_bound_lower_current_y, bound_zp, SHAFT_OFFSET_HORIZONTAL do
             mv_yz(y_current, z_current)
             orientTowards(1,0)
             mk_corridor_optimine(bound_x)
