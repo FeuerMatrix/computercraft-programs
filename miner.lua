@@ -101,6 +101,21 @@ local function turnAround()
     zdir = -zdir
 end
 
+--orients the turtle in the given x/z-directions
+local function orientTowards(xOr, zOr)
+    if xdir == xOr and zdir == zOr then
+        return
+    end
+    if xdir == zOr and -zdir == xOr  then
+        right()
+        return
+    end
+    left()
+    if not (xdir == xOr and zdir == zOr) then
+        left()
+    end
+end
+
 --TODO
 local function check()
     
@@ -128,11 +143,55 @@ local function mk_corridor_optimine(length)
         check()
         left()
     end
+    check()
+end
+
+local function mv_x(x_translation)
+    if x_translation == 0 then
+        return
+    end
+
+    orientTowards(x_translation > 0 and 1 or -1, 0)
+    local temp = math.abs(x_translation)
+    for i = 1, temp, 1 do
+        forward()
+    end
+end
+
+local function mv_y(y_translation)
+    if y_translation == 0 then
+        return
+    end
+
+    local temp = math.abs(y_translation)
+    if y_translation < 0 then
+        for i = 1, temp, 1 do
+            down()
+        end
+        return
+    end
+
+    for i = 1, temp, 1 do
+        up()
+    end
+end
+
+local function mv_z(z_translation)
+    if z_translation == 0 then
+        return
+    end
+
+    orientTowards(0, z_translation > 0 and 1 or -1)
+    local temp = math.abs(z_translation)
+    for i = 1, temp, 1 do
+        forward()
+    end
 end
 
 --moves the turtle to the position in the yz plane
 local function mv_yz(ypos, zpos)
-    --TODO
+   mv_z(zpos - z)
+   mv_y(ypos - y)
 end
 
 --starts the main mining program
@@ -144,63 +203,26 @@ local function mine()
         
         for z_current = -z_bound_lower_current_y, bound_zp, 5 do
             mv_yz(y_current, z_current)
-            --TODO extend a shaft in x direction
+            orientTowards(1,0)
+            mk_corridor_optimine(bound_x)
+            mv_x(-bound_x)
         end
-    end
-end
-
---orients the turtle in the given x/z-directions
-local function orientTowards(xOr, zOr)
-    if xdir == xOr and zdir == zOr then
-        return
-    end
-    if xdir == zOr and -zdir == xOr  then
-        right()
-        return
-    end
-    left()
-    if not (xdir == xOr and zdir == zOr) then
-        left()
     end
 end
 
 --makes the turtle return to its starting position, facing backwards
 local function returnToStart()
-    if not (x == 0) then
-        orientTowards(x < 0 and 1 or -1, 0)
-        local temp = math.abs(x)
-        for i = 1, temp, 1 do
-            forward()
-        end
-    end
+    mv_yz(0,0)
 
-    if not (z == 0) then
-        orientTowards(0, z < 0 and 1 or -1)
-        local temp = math.abs(z)
-        for i = 1, temp, 1 do
-            forward()
-        end
-    end
-
-    if y == 0 then
-        return
-    end
-    local temp = math.abs(y)
-    if y > 0 then
-        for i = 1, temp, 1 do
-            down()
-        end
-    else
-        for i = 1, temp, 1 do
-            up()
-        end
-    end
-    orientTowards(-1,0)
+    mv_x(-x)
+    
+    orientTowards(1,0)
 end
 
 --main program
 local function main()
     mine()
+    
     returnToStart()
 end
 
