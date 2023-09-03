@@ -83,7 +83,7 @@ local function checkFuelStatus()
     if fuel == "unlimited" or current_movement_significance == 2 then
         return
     end
-    if fuel > 2 + coordinate_1_norm() then
+    if fuel > 1 + coordinate_1_norm() then
         return
     end
     refuel()
@@ -309,8 +309,7 @@ end
 
 --main program
 local function main()
-    --mine()
-    refuel()
+    mine()
     returnToStart()
 end
 
