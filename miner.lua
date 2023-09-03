@@ -8,7 +8,8 @@ local RETURN_PATH_STRAIGHTENING_MAX_CHECKING_DISTANCE = 20
 local VEINMINE_IGNORE_BOUNDARIES = true
 --if true, the turtle gets rid of items not in the list of blocks to mine
 local DELETE_UNWANTED_ITEMS = false
-
+local INFINITE_FUEL = false
+local FUEL_SLOT = 1
 --(5/2) -> minimal mining to check EVERY block | (8/3) -> assumes that most ore veins will extend in more than one direction. ~50% faster, but might miss some ore veins with only 1 or 2 blocks
 --how much blocks to the next shaft on the same y-level
 local SHAFT_OFFSET_HORIZONTAL = 5
@@ -20,6 +21,17 @@ local xdir, zdir = 1,0
 
 --boundaries of the area to mine
 local bound_x, bound_yp, bound_yn, bound_zp, bound_zn = 5, 2, 2, 5, 5
+
+--[[-
+    Significance of the movement that is currently executed. Determines how to react to problems like hitting bedrock, full inventory and low fuel.
+
+    0 <=> Low significance, e.g. following ore veines. Bedrock is just ignored and the movement is cancelled. Logistical problems immediately pause the action.
+    1 <=> Normal significance, e.g. mining a branch. Logistical problems are treated like for low significance, but changes to the planned movement will be made when hitting bedrock.
+    2 <=> Critical Movement. Logistical problems are ignored. Hitting bedrock results in the entire program yielding.
+]]
+local current_movement_significance = 1
+
+local returnToStart
 
 --this is only here so that lua syntax check ignores computer craft specific globals --TODO delete on release
 turtle = turtle
@@ -33,8 +45,53 @@ local function logData()
     print(x .. " | " .. y .. " | " .. z .. " || " .. xdir .. " | " .. zdir)
 end
 
+--[[-
+    Returns the 1-norm of the current coordinate vector (also known as Manhattan distance)
+    @return Manhattan distance of current coordinate to (0,0,0)
+]]
+local function coordinate_1_norm()
+    return math.abs(x) + math.abs(y) + math.abs(z)
+end
+
+local function refuel()
+    if not (turtle.getSelectedSlot() == FUEL_SLOT) then
+        turtle.select(FUEL_SLOT)
+    end
+    if turtle.getItemCount() > 1 then
+        if turtle.refuel(turtle.getItemCount() - 1) then
+            return
+        end
+    end
+    for i = 1, 16, 1 do --check other slots for fuel
+        if not (i == FUEL_SLOT) then
+            turtle.select(i)
+            if turtle.refuel(64) then
+                return
+            end
+        end
+    end
+    current_movement_significance = 2
+    returnToStart()
+    error("Critical fuel level. Terminating Program.")
+end
+
+--[[-
+    Checks if the current fuel level is high enough to make it back even after one more movement. If not enough fuel is supplied, enters refueling.
+]]
+local function checkFuelStatus()
+    local fuel = turtle.getFuelLevel()
+    if fuel == "unlimited" or current_movement_significance == 2 then
+        return
+    end
+    if fuel > 2 + coordinate_1_norm() then
+        return
+    end
+    refuel()
+end
+
 --moves the turtle forward
 local function forward(length)
+    checkFuelStatus()
     if not length then
         length = 1
     end
@@ -52,6 +109,7 @@ end
 
 --moves the turtle upward
 local function up(length)
+    checkFuelStatus()
     if not length then
         length = 1
     end
@@ -68,6 +126,7 @@ end
 
 --moves the turtle down
 local function down(length)
+    checkFuelStatus()
     if not length then
         length = 1
     end
@@ -124,7 +183,7 @@ local function orientTowards(xOr, zOr)
 end
 
 --[[-
-    Checks if the block described in the given data is whitelisted for mining.
+    Checks if the block described in the given data is whitelisted for mining. TODO editable whitelist
     @param #table data The data of the block to check
     @return #boolean
 ]]
@@ -133,47 +192,6 @@ local function is_block_whitelisted(data)
         return true
     end
     return false
-end
-
-local function check()
-    local is_block, data = turtle.inspect()
-    if (not is_block) or (not is_block_whitelisted(data)) then
-        return
-    end
-    turtle.dig()
-end
-
-local function checkUp()
-    local is_block, data = turtle.inspectUp()
-    if (not is_block) or (not is_block_whitelisted(data)) then
-        return
-    end
-    turtle.digUp()
-end
-
-local function checkDown()
-    local is_block, data = turtle.inspectDown()
-    if (not is_block) or (not is_block_whitelisted(data)) then
-        return
-    end
-    turtle.digDown()
-end
-
---moves <length> blocks forward, while checking all open faces for ores
-local function mk_corridor_optimine(length)
-    for i = 1, length, 1 do
-        forward()
-        check()
-        checkUp()
-        checkDown()
-        left()
-        check()
-        turnAround()
-        check()
-        if i < length then
-            left()
-        end
-    end
 end
 
 local function mv_x(x_translation)
@@ -224,6 +242,47 @@ local function mv_yz(ypos, zpos)
    mv_y(ypos - y)
 end
 
+local function check()
+    local is_block, data = turtle.inspect()
+    if (not is_block) or (not is_block_whitelisted(data)) then
+        return
+    end
+    turtle.dig()
+end
+
+local function checkUp()
+    local is_block, data = turtle.inspectUp()
+    if (not is_block) or (not is_block_whitelisted(data)) then
+        return
+    end
+    turtle.digUp()
+end
+
+local function checkDown()
+    local is_block, data = turtle.inspectDown()
+    if (not is_block) or (not is_block_whitelisted(data)) then
+        return
+    end
+    turtle.digDown()
+end
+
+--moves <length> blocks forward, while checking all open faces for ores
+local function mk_corridor_optimine(length)
+    for i = 1, length, 1 do
+        forward()
+        check()
+        checkUp()
+        checkDown()
+        left()
+        check()
+        turnAround()
+        check()
+        if i < length then
+            left()
+        end
+    end
+end
+
 --starts the main mining program
 local function mine()
     for y_current = -bound_yn, bound_yp, 1 do
@@ -240,18 +299,18 @@ local function mine()
 end
 
 --makes the turtle return to its starting position, facing backwards
-local function returnToStart()
+function returnToStart()
     mv_yz(0,0)
 
     mv_x(-x)
     
-    orientTowards(1,0)
+    orientTowards(-1,0)
 end
 
 --main program
 local function main()
-    mine()
-    
+    --mine()
+    refuel()
     returnToStart()
 end
 
