@@ -1,6 +1,6 @@
 -- CC Turtle Mining Program by FeuerMatrix
 
-local LOG_DATA = false
+local LOG_DATA = true
 --Checks for easier ways back than just reversing every movement. Makes the turtle more fuel efficient.
 local RETURN_PATH_STRAIGHTENING = true
 --How many last movement positions away the turtle will consider when finding a better path.
@@ -10,6 +10,8 @@ local VEINMINE_IGNORE_BOUNDARIES = true
 local DELETE_UNWANTED_ITEMS = false
 local INFINITE_FUEL = false
 local FUEL_SLOT = 1
+--the upper limit for fuel to carry at one time. This is not a hard limit, some actions may still go above this if they have a reason to do so. Putting this too high means that the turtle will swallow the entire load of mined coal.
+local FUEL_CONSUMPTION_LIMIT = 20000
 --(5/2) -> minimal mining to check EVERY block | (8/3) -> assumes that most ore veins will extend in more than one direction. ~50% faster, but might miss some ore veins with only 1 or 2 blocks
 --how much blocks to the next shaft on the same y-level
 local SHAFT_OFFSET_HORIZONTAL = 5
@@ -32,6 +34,7 @@ local bound_x, bound_yp, bound_yn, bound_zp, bound_zn = 5, 2, 2, 5, 5
 local current_movement_significance = 1
 
 local returnToStart
+local checkInventoryFull
 
 --this is only here so that lua syntax check ignores computer craft specific globals --TODO delete on release
 turtle = turtle
@@ -42,7 +45,18 @@ local function logData()
     if not LOG_DATA then
         return
     end
-    print(x .. " | " .. y .. " | " .. z .. " || " .. xdir .. " | " .. zdir)
+    --print(x .. " | " .. y .. " | " .. z .. " || " .. xdir .. " | " .. zdir)
+    print(current_movement_significance)
+end
+
+local function empty()
+    for i = 1, 16, 1 do
+        if not (i == FUEL_SLOT) then
+            turtle.select(i)
+            turtle.drop()
+        end
+    end
+    turtle.select(FUEL_SLOT)
 end
 
 --[[-
@@ -66,12 +80,15 @@ local function refuel()
         if not (i == FUEL_SLOT) then
             turtle.select(i)
             if turtle.refuel(64) then
+                turtle.select(FUEL_SLOT)
                 return
             end
         end
     end
+    turtle.select(FUEL_SLOT)
     current_movement_significance = 2
     returnToStart()
+    empty()
     error("Critical fuel level. Terminating Program.")
 end
 
@@ -89,7 +106,25 @@ local function checkFuelStatus()
     refuel()
 end
 
---moves the turtle forward
+local function dig()
+    turtle.dig()
+    checkInventoryFull()
+end
+
+local function digUp()
+    turtle.digUp()
+    checkInventoryFull()
+end
+
+local function digDown()
+    turtle.digDown()
+    checkInventoryFull()
+end
+
+--[[-
+    Moves the turtle forward by the given length.
+    @param #int length The amount of blocks to move. Defaults to 1.
+]]
 local function forward(length)
     checkFuelStatus()
     if not length then
@@ -99,7 +134,7 @@ local function forward(length)
     for i = 1, length, 1 do
         while not turtle.forward() do
             turtle.attack()
-            turtle.dig()
+            dig()
         end
         x = x + xdir
         z = z + zdir
@@ -107,7 +142,10 @@ local function forward(length)
     end
 end
 
---moves the turtle upward
+--[[-
+    Moves the turtle upward by the given length.
+    @param #int length The amount of blocks to move. Defaults to 1.
+]]
 local function up(length)
     checkFuelStatus()
     if not length then
@@ -117,14 +155,17 @@ local function up(length)
     for i = 1, length, 1 do
         while not turtle.up() do
             turtle.attackUp()
-            turtle.digUp()
+            digUp()
         end
         y = y + 1
         logData()
     end
 end
 
---moves the turtle down
+--[[-
+    Moves the turtle down by the given length.
+    @param #int length The amount of blocks to move. Defaults to 1.
+]]
 local function down(length)
     checkFuelStatus()
     if not length then
@@ -134,14 +175,16 @@ local function down(length)
     for i = 1, length, 1 do
         while not turtle.down() do
         turtle.attackDown()
-        turtle.digDown()
+        digDown()
     end
     y = y - 1
     logData()
     end
 end
 
---turns the turtle right
+--[[-
+    Turns the turtle right.
+]]
 local function right()
     turtle.turnRight()
     local xtemp = xdir
@@ -150,7 +193,9 @@ local function right()
     logData()
 end
 
---turns the turtle left
+--[[-
+    Turns the turtle left.
+]]
 local function left()
     turtle.turnLeft()
     local xtemp = xdir
@@ -159,7 +204,9 @@ local function left()
     logData()
 end
 
---turns the turtle around
+--[[-
+    Turns the turtle around.
+]]
 local function turnAround()
     turtle.turnRight()
     turtle.turnRight()
@@ -167,7 +214,12 @@ local function turnAround()
     zdir = -zdir
 end
 
---orients the turtle in the given x/z-directions
+
+--[[-
+    Turns the turtle so that it faces the given direction.
+    @param #int xOr Where to face on the x-axis (valid are -1, 0, 1)
+    @param #int yOr Where to face on the y-axis (valid are -1, 0, 1)
+]]
 local function orientTowards(xOr, zOr)
     if xdir == xOr and zdir == zOr then
         return
@@ -242,12 +294,44 @@ local function mv_yz(ypos, zpos)
    mv_y(ypos - y)
 end
 
+function checkInventoryFull()
+    if turtle.getItemCount(16) == 0 or current_movement_significance == 2 then
+        return
+    end
+    
+    --try to consume fuel stacks first, and if a slot opens up, transfer from slot 16
+    if turtle.getFuelLevel() < FUEL_CONSUMPTION_LIMIT then
+        for i = 1, 16, 1 do
+            if not (i == FUEL_SLOT) and not (turtle.getItemCount(i) == 0) then
+                turtle.select(i)
+                turtle.refuel(64)
+            end
+            if turtle.getItemCount(i) == 0 then
+                turtle.select(16)
+                turtle.transferTo(i)
+                turtle.select(FUEL_SLOT)
+                return
+            end
+        end
+    end
+    turtle.select(FUEL_SLOT)
+    local previous_significance = current_movement_significance
+    current_movement_significance = 2
+    local return_x, return_y, return_z, return_xdir, return_zdir = x,y,z,xdir,zdir
+    returnToStart()
+    empty()
+    mv_yz(return_y, return_z)
+    mv_x(return_x)
+    orientTowards(return_xdir,return_zdir)
+    current_movement_significance = previous_significance
+end
+
 local function check()
     local is_block, data = turtle.inspect()
     if (not is_block) or (not is_block_whitelisted(data)) then
         return
     end
-    turtle.dig()
+    dig()
 end
 
 local function checkUp()
@@ -255,7 +339,7 @@ local function checkUp()
     if (not is_block) or (not is_block_whitelisted(data)) then
         return
     end
-    turtle.digUp()
+    digUp()
 end
 
 local function checkDown()
@@ -263,7 +347,7 @@ local function checkDown()
     if (not is_block) or (not is_block_whitelisted(data)) then
         return
     end
-    turtle.digDown()
+    digDown()
 end
 
 --moves <length> blocks forward, while checking all open faces for ores
@@ -300,10 +384,10 @@ end
 
 --makes the turtle return to its starting position, facing backwards
 function returnToStart()
+    mv_x(-x)
+
     mv_yz(0,0)
 
-    mv_x(-x)
-    
     orientTowards(-1,0)
 end
 
