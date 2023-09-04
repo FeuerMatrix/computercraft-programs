@@ -76,6 +76,11 @@ local function refuel()
             return
         end
     end
+    if turtle.getItemSpace() == 0 and turtle.getItemCount() == 1 then --if the fuel item is not stackable, the turtle will not keep a single fuel item around (since that would just waste the slot)
+        if turtle.refuel(1) then
+            return
+        end
+    end
     for i = 1, 16, 1 do --check other slots for fuel
         if not (i == FUEL_SLOT) then
             turtle.select(i)
@@ -85,10 +90,11 @@ local function refuel()
             end
         end
     end
-    turtle.select(FUEL_SLOT)
     current_movement_significance = 2
     returnToStart()
     empty()
+    turtle.select(FUEL_SLOT)
+    turtle.drop()
     error("Critical fuel level. Terminating Program.")
 end
 
@@ -393,7 +399,9 @@ end
 
 --main program
 local function main()
-    mine()
+    --mine()
+    refuel()
+    print(turtle.getItemSpace())
     returnToStart()
 end
 
