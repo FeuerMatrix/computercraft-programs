@@ -1,6 +1,6 @@
 -- CC Turtle Mining Program by FeuerMatrix
 
-local LOG_DATA = true
+local LOG_DATA = false
 --Checks for easier ways back than just reversing every movement. Makes the turtle more fuel efficient.
 local RETURN_PATH_STRAIGHTENING = true
 --How many last movement positions away the turtle will consider when finding a better path.
@@ -22,7 +22,7 @@ local x, y, z = 0,0,0
 local xdir, zdir = 1,0
 
 --boundaries of the area to mine
-local bound_x, bound_yp, bound_yn, bound_zp, bound_zn = 5, 2, 2, 5, 5
+local bound_x, bound_yp, bound_yn, bound_zp, bound_zn = 1, 2, 2, 2, 2
 
 --[[-
     Significance of the movement that is currently executed. Determines how to react to problems like hitting bedrock, full inventory and low fuel.
@@ -59,6 +59,12 @@ local function empty()
     turtle.select(FUEL_SLOT)
 end
 
+local function emptyAll()
+    empty()
+    turtle.select(FUEL_SLOT)
+    turtle.drop()
+end
+
 --[[-
     Returns the 1-norm of the current coordinate vector (also known as Manhattan distance)
     @return Manhattan distance of current coordinate to (0,0,0)
@@ -92,9 +98,7 @@ local function refuel()
     end
     current_movement_significance = 2
     returnToStart()
-    empty()
-    turtle.select(FUEL_SLOT)
-    turtle.drop()
+    emptyAll()
     error("Critical fuel level. Terminating Program.")
 end
 
@@ -386,6 +390,8 @@ local function mine()
             mv_x(-bound_x)
         end
     end
+    returnToStart()
+    emptyAll()
 end
 
 --makes the turtle return to its starting position, facing backwards
@@ -399,10 +405,7 @@ end
 
 --main program
 local function main()
-    --mine()
-    refuel()
-    print(turtle.getItemSpace())
-    returnToStart()
+    mine()
 end
 
 main();
