@@ -129,18 +129,18 @@ local function checkFuelStatus()
 end
 
 local function dig()
-    turtle.dig()
     checkInventoryFull()
+    turtle.dig()
 end
 
 local function digUp()
-    turtle.digUp()
     checkInventoryFull()
+    turtle.digUp()
 end
 
 local function digDown()
-    turtle.digDown()
     checkInventoryFull()
+    turtle.digDown()
 end
 
 --[[-
