@@ -22,7 +22,7 @@ local x, y, z = 0,0,0
 local xdir, zdir = 1,0
 
 --boundaries of the area to mine
-local bound_x, bound_yp, bound_yn, bound_zp, bound_zn = 1, 2, 2, 2, 2
+local bound_x, bound_yp, bound_yn, bound_zp, bound_zn = 1, 1, 1, 2, 2
 
 --[[-
     Significance of the movement that is currently executed. Determines how to react to problems like hitting bedrock, full inventory and low fuel.
@@ -87,10 +87,22 @@ local function refuel()
             return
         end
     end
+    local fuel_in_slot = turtle.refuel(0)
     for i = 1, 16, 1 do --check other slots for fuel
         if not (i == FUEL_SLOT) then
             turtle.select(i)
-            if turtle.refuel(64) then
+            if turtle.refuel(0) then
+                if turtle.getItemCount() > 1 and not fuel_in_slot and (turtle.getItemCount(16) == 0 or turtle.getItemCount(FUEL_SLOT) == 0) then --if there is more than one fuel item in the selected slot and no more fuel in the fuel slot, makes the found fuel the new fuel in the fuel slot.
+                    if not turtle.getItemCount(FUEL_SLOT) == 0 then
+                        turtle.select(FUEL_SLOT)
+                        turtle.transferTo(16)
+                        turtle.select(i) 
+                    end
+                    turtle.transferTo(FUEL_SLOT)
+                    refuel()
+                    return
+                end
+                turtle.refuel() --if the above condition is not fulfilled, the found fuel is simply consumed.
                 turtle.select(FUEL_SLOT)
                 return
             end
