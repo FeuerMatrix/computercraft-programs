@@ -1,6 +1,6 @@
 -- CC Turtle Mining Program by FeuerMatrix
 
-local LOG_DATA = true
+local LOG_DATA = false
 --Checks for easier ways back than just reversing every movement. Makes the turtle more fuel efficient.
 local RETURN_PATH_STRAIGHTENING = true
 --How many last movement positions away the turtle will consider when finding a better path.
@@ -32,6 +32,9 @@ tree = {
             x = node_x,
             y = node_y,
             z = node_z,
+            getCoordinates = function (self)
+                return self.x, self.y, self.z
+            end,
             children = {},
             addChild = function (self, new_tree)
                 new_tree.parent = self
@@ -50,6 +53,15 @@ tree = {
                     end
                 end
                 return false
+            end,
+            currentDepth = function (self)
+                local temp = self
+                local counter = 0
+                while not (temp.parent == nil) do
+                    counter = counter + 1
+                    temp = temp.parent
+                end
+                return counter
             end,
             getFirstParent = function (self)
                 local current_knot = self
@@ -109,8 +121,17 @@ end
     Returns the 1-norm of the current coordinate vector (also known as Manhattan distance)
     @return Manhattan distance of current coordinate to (0,0,0)
 ]]
-local function coordinate_1_norm()
-    return math.abs(x) + math.abs(y) + math.abs(z)
+local function one_norm(in1, in2, in3)
+    return math.abs(in1) + math.abs(in2) + math.abs(in3)
+end
+
+local function fuel_to_return()
+    if excavation_graph == nil then
+        return one_norm(x,y,z)
+    end
+    print(excavation_graph:getFirstParent():getCoordinates())
+    print(excavation_graph:currentDepth())
+    return one_norm(excavation_graph:getFirstParent():getCoordinates()) + excavation_graph:currentDepth() - 1
 end
 
 local function refuel()
@@ -162,7 +183,7 @@ local function checkFuelStatus()
     if fuel == "unlimited" or current_movement_significance == 2 then
         return
     end
-    if fuel > 1 + coordinate_1_norm() then
+    if fuel > 1 + fuel_to_return() then
         return
     end
     refuel()
@@ -434,7 +455,7 @@ function check()
         return
     end
     if excavation_graph == nil then
-        excavation_graph = tree.newInstance(x, z)
+        excavation_graph = tree.newInstance(x, y, z)
     end
     local temp = tree.newInstance(x + xdir, y, z + zdir)
     excavation_graph:addChild(temp)
@@ -442,11 +463,11 @@ function check()
     forward()
     cascade_checks()
     forward()
+    excavation_graph = excavation_graph.parent
     if excavation_graph.parent == nil then
         excavation_graph = nil
         return
     end
-    excavation_graph = excavation_graph.parent
 end
 
 function checkUp()
@@ -463,11 +484,11 @@ function checkUp()
     up()
     cascade_checks()
     down()
+    excavation_graph = excavation_graph.parent
     if excavation_graph.parent == nil then
         excavation_graph = nil
         return
     end
-    excavation_graph = excavation_graph.parent
 end
 
 function checkDown()
@@ -484,11 +505,11 @@ function checkDown()
     down()
     cascade_checks()
     up()
+    excavation_graph = excavation_graph.parent
     if excavation_graph.parent == nil then
         excavation_graph = nil
         return
     end
-    excavation_graph = excavation_graph.parent
 end
 
 --moves <length> blocks forward, while checking all open faces for ores
