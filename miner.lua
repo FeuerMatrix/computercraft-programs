@@ -1,6 +1,6 @@
 -- CC Turtle Mining Program by FeuerMatrix
 
-local LOG_DATA = false
+local LOG_DATA = true
 --Checks for easier ways back than just reversing every movement. Makes the turtle more fuel efficient.
 local RETURN_PATH_STRAIGHTENING = true
 --How many last movement positions away the turtle will consider when finding a better path.
@@ -24,6 +24,47 @@ local xdir, zdir = 1,0
 --boundaries of the area to mine
 local bound_x, bound_yp, bound_yn, bound_zp, bound_zn = 1, 1, 1, 2, 2
 
+--basic implementation of a tree structure. Note that this is a special implementation for the vein excavation and does not behave exactly as a normal tree would.
+local tree
+tree = {
+    newInstance = function(node_x, node_y, node_z)
+        return {
+            x = node_x,
+            y = node_y,
+            z = node_z,
+            children = {},
+            addChild = function (self, new_tree)
+                new_tree.parent = self
+                self.children[#self.children+1] = new_tree
+            end,
+            isLeaf = function (self)
+                return #self.children == 0
+            end,
+            contains = function (self, search_x, search_y, search_z)
+                if self.x == search_x and self.y == search_y and self.z == search_z then
+                    return true
+                end
+                for i = 1, #self.children, 1 do
+                    if self.children[i]:contains(search_x, search_y, search_z) then
+                        return true
+                    end
+                end
+                return false
+            end,
+            getFirstParent = function (self)
+                local current_knot = self
+                while not (current_knot.parent == nil) do
+                    current_knot = current_knot.parent
+                end
+                return current_knot
+            end,
+            class = tree --allows for object.class.newInstance()
+        }
+    end
+}
+
+local excavation_graph
+
 --[[-
     Significance of the movement that is currently executed. Determines how to react to problems like hitting bedrock, full inventory and low fuel.
 
@@ -45,8 +86,7 @@ local function logData()
     if not LOG_DATA then
         return
     end
-    --print(x .. " | " .. y .. " | " .. z .. " || " .. xdir .. " | " .. zdir)
-    print(current_movement_significance)
+    print(x .. " | " .. y .. " | " .. z .. " || " .. xdir .. " | " .. zdir)
 end
 
 local function empty()
@@ -204,14 +244,24 @@ local function down(length)
     end
 end
 
+local function rotate_right(old_xdir, old_zdir)
+    return -old_zdir, old_xdir
+end
+
+local function rotate_left(old_xdir, old_zdir)
+    return old_zdir, -old_xdir
+end
+
+local function rotate_around(old_xdir, old_zdir)
+    return -old_xdir, -old_zdir
+end
+
 --[[-
     Turns the turtle right.
 ]]
 local function right()
     turtle.turnRight()
-    local xtemp = xdir
-    xdir = -zdir
-    zdir = xtemp
+    xdir, zdir = rotate_right(xdir, zdir)
     logData()
 end
 
@@ -220,9 +270,7 @@ end
 ]]
 local function left()
     turtle.turnLeft()
-    local xtemp = xdir
-    xdir = zdir
-    zdir = -xtemp
+    xdir, zdir = rotate_left(xdir, zdir)
     logData()
 end
 
@@ -232,8 +280,8 @@ end
 local function turnAround()
     turtle.turnRight()
     turtle.turnRight()
-    xdir = -xdir
-    zdir = -zdir
+    xdir, zdir = rotate_around(xdir, zdir)
+    logData()
 end
 
 
@@ -348,45 +396,115 @@ function checkInventoryFull()
     current_movement_significance = previous_significance
 end
 
-local function check()
+local check
+local checkUp
+local checkDown
+
+local function cascade_checks()
+    local starting_xdir, starting_zdir = xdir, zdir
+    if excavation_graph == nil or not excavation_graph:contains(x + xdir, y, z + zdir) then
+        check()
+    end
+    if excavation_graph == nil or not excavation_graph:contains(x, y - 1, z) then
+        checkDown()
+    end
+    if excavation_graph == nil or not excavation_graph:contains(x, y + 1, z) then
+        checkUp()
+    end
+    local new_xdir, new_zdir = rotate_left(starting_xdir, starting_zdir)
+    if excavation_graph == nil or not excavation_graph:contains(x + new_xdir, y, z + new_zdir) then
+        orientTowards(new_xdir, new_zdir)
+        check()
+    end
+    new_xdir, new_zdir = rotate_right(starting_xdir, starting_zdir)
+    if excavation_graph == nil or not excavation_graph:contains(x + new_xdir, y, z + new_zdir) then
+        orientTowards(new_xdir, new_zdir)
+        check()
+    end
+    local new_xdir, new_zdir = rotate_around(starting_xdir, starting_zdir)
+    if excavation_graph == nil or not excavation_graph:contains(x + new_xdir, y, z + new_zdir) then
+        orientTowards(new_xdir, new_zdir)
+        check()
+    end
+end
+
+function check()
     local is_block, data = turtle.inspect()
     if (not is_block) or (not is_block_whitelisted(data)) then
         return
     end
-    dig()
+    if excavation_graph == nil then
+        excavation_graph = tree.newInstance(x, z)
+    end
+    local temp = tree.newInstance(x + xdir, y, z + zdir)
+    excavation_graph:addChild(temp)
+    excavation_graph = temp
+    forward()
+    cascade_checks()
+    forward()
+    if excavation_graph.parent == nil then
+        excavation_graph = nil
+        return
+    end
+    excavation_graph = excavation_graph.parent
 end
 
-local function checkUp()
+function checkUp()
     local is_block, data = turtle.inspectUp()
     if (not is_block) or (not is_block_whitelisted(data)) then
         return
     end
-    digUp()
+    if excavation_graph == nil then
+        excavation_graph = tree.newInstance(x, y+1, z)
+    end
+    local temp = tree.newInstance(x, z)
+    excavation_graph:addChild(temp)
+    excavation_graph = temp
+    up()
+    cascade_checks()
+    down()
+    if excavation_graph.parent == nil then
+        excavation_graph = nil
+        return
+    end
+    excavation_graph = excavation_graph.parent
 end
 
-local function checkDown()
+function checkDown()
     local is_block, data = turtle.inspectDown()
     if (not is_block) or (not is_block_whitelisted(data)) then
         return
     end
-    digDown()
+    if excavation_graph == nil then
+        excavation_graph = tree.newInstance(x, y-1, z)
+    end
+    local temp = tree.newInstance(x + xdir, z + zdir)
+    excavation_graph:addChild(temp)
+    excavation_graph = temp
+    down()
+    cascade_checks()
+    up()
+    if excavation_graph.parent == nil then
+        excavation_graph = nil
+        return
+    end
+    excavation_graph = excavation_graph.parent
 end
 
 --moves <length> blocks forward, while checking all open faces for ores
 local function mk_corridor_optimine(length)
+    local starting_xdir, starting_zdir = xdir, zdir
     for i = 1, length, 1 do
-        forward()
+        mv_x(1)
         check()
         checkUp()
         checkDown()
-        left()
+        orientTowards(rotate_left(starting_xdir, starting_zdir))
         check()
-        turnAround()
+        orientTowards(rotate_right(starting_xdir, starting_zdir))
         check()
-        if i < length then
-            left()
-        end
     end
+    mv_x(-length)
 end
 
 --starts the main mining program
@@ -399,7 +517,6 @@ local function mine()
             mv_yz(y_current, z_current)
             orientTowards(1,0)
             mk_corridor_optimine(bound_x)
-            mv_x(-bound_x)
         end
     end
     returnToStart()
@@ -417,7 +534,7 @@ end
 
 --main program
 local function main()
-    mine()
+    mk_corridor_optimine(3)
 end
 
 main();
