@@ -104,7 +104,7 @@ end
 
 local function empty()
     for i = 1, 16, 1 do
-        if not (i == FUEL_SLOT) then
+        if not (i == FUEL_SLOT) and not (turtle.getItemCount(i) == 0) then
             turtle.select(i)
             turtle.drop()
         end
@@ -114,6 +114,9 @@ end
 
 local function emptyAll()
     empty()
+    if turtle.getItemCount(FUEL_SLOT) == 0 then
+        return
+    end
     turtle.select(FUEL_SLOT)
     turtle.drop()
 end
