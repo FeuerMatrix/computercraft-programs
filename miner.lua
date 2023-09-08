@@ -5,10 +5,10 @@ local LOG_DATA = false
 local RETURN_PATH_STRAIGHTENING = true
 --How many last movement positions away the turtle will consider when finding a better path.
 local RETURN_PATH_STRAIGHTENING_MAX_CHECKING_DISTANCE = 20
+local DO_VEINMINE = true
 local VEINMINE_IGNORE_BOUNDARIES = true
 --if true, the turtle gets rid of items not in the list of blocks to mine
 local DELETE_UNWANTED_ITEMS = false
-local INFINITE_FUEL = false
 local FUEL_SLOT = 1
 --the upper limit for fuel to carry at one time. This is not a hard limit, some actions may still go above this if they have a reason to do so. Putting this too high means that the turtle will swallow the entire load of mined coal.
 local FUEL_CONSUMPTION_LIMIT = 20000
@@ -22,9 +22,9 @@ local x, y, z = 0,0,0
 local xdir, zdir = 1,0
 
 --boundaries of the area to mine
-local bound_x, bound_yp, bound_yn, bound_zp, bound_zn = 1, 1, 1, 2, 2
+local bound_x, bound_yp, bound_yn, bound_zp, bound_zn = 4, 1, 1, 2, 2
 
---basic implementation of a tree structure. Note that this is a special implementation for the vein excavation and does not behave exactly as a normal tree would.
+--basic implementation of a tree structure. Note that this is a special implementation for the vein excavation and does not necessarily behave exactly as a normal tree would.
 local tree
 tree = {
     newInstance = function(node_x, node_y, node_z)
@@ -86,6 +86,7 @@ local excavation_graph
 ]]
 local current_movement_significance = 1
 
+local returnToMiningPosition
 local returnToStart
 local checkInventoryFull
 
@@ -129,8 +130,6 @@ local function fuel_to_return()
     if excavation_graph == nil then
         return one_norm(x,y,z)
     end
-    print(excavation_graph:getFirstParent():getCoordinates())
-    print(excavation_graph:currentDepth())
     return one_norm(excavation_graph:getFirstParent():getCoordinates()) + excavation_graph:currentDepth() - 1
 end
 
@@ -379,10 +378,11 @@ local function mv_z(z_translation)
     end
 end
 
---moves the turtle to the position in the yz plane
-local function mv_yz(ypos, zpos)
-   mv_z(zpos - z)
-   mv_y(ypos - y)
+--Moves the turtle to the specified position. This may change rotation
+local function mv_xyz(xpos, ypos, zpos)
+    mv_x(xpos - x)
+    mv_z(zpos - z)
+    mv_y(ypos - y)
 end
 
 function checkInventoryFull()
@@ -411,8 +411,7 @@ function checkInventoryFull()
     local return_x, return_y, return_z, return_xdir, return_zdir = x,y,z,xdir,zdir
     returnToStart()
     empty()
-    mv_yz(return_y, return_z)
-    mv_x(return_x)
+    returnToMiningPosition(return_x, return_y, return_z)
     orientTowards(return_xdir,return_zdir)
     current_movement_significance = previous_significance
 end
@@ -535,7 +534,7 @@ local function mine()
         z_bound_lower_current_y = z_bound_lower_current_y > bound_zn and z_bound_lower_current_y - SHAFT_OFFSET_HORIZONTAL or z_bound_lower_current_y
         
         for z_current = -z_bound_lower_current_y, bound_zp, SHAFT_OFFSET_HORIZONTAL do
-            mv_yz(y_current, z_current)
+            mv_xyz(0, y_current, z_current)
             orientTowards(1,0)
             mk_corridor_optimine(bound_x)
         end
@@ -544,18 +543,57 @@ local function mine()
     emptyAll()
 end
 
+--helper function for returnToMiningPosition()
+local function traceExcavationGraph(return_x, return_y, return_z, node)
+    if not (node.parent == nil) then
+        traceExcavationGraph(return_x, return_y, return_z, node.parent)
+        mv_xyz(node:getCoordinates())
+    end
+end
+
+function returnToMiningPosition(return_x, return_y, return_z)
+    if excavation_graph == nil then
+        mv_xyz(0, return_y, return_z) --so that the x movement is executed last (mv_xyz moves x first)
+        mv_xyz(return_x, 0, 0)
+        return
+    end
+    --if the turtle was excavating an ore vein, it should not break a lot of blocks to get back. Therefore, it first moves to the excavation entry point and then traces the excavation graph to the return coordinates
+    local upper_node = excavation_graph:getFirstParent()
+    mv_xyz(0, upper_node.y, upper_node.z) --so that the x movement is executed last (mv_xyz moves x first)
+    mv_xyz(upper_node.x, 0, 0)
+    local temp_node = excavation_graph
+    while not (temp_node.x == return_x and temp_node.y == return_y and temp_node.z == return_z) do --excavation graph might have already updated, but movement not yet conducted
+        if temp_node.parent == nil then
+            error("critical error in ore excavation data")
+        end
+        temp_node = temp_node.parent
+    end
+    traceExcavationGraph(return_x, return_y, return_z, temp_node)
+end
+
 --makes the turtle return to its starting position, facing backwards
 function returnToStart()
-    mv_x(-x)
-
-    mv_yz(0,0)
+    if not (excavation_graph == nil) then --if the turtle was currently excavating an ore vein, it should first trace that back
+        local temp_node = excavation_graph
+        while not (temp_node.x == x and temp_node.y == y and temp_node.z == z) do --excavation graph might have already updated, but movement not yet conducted
+            if temp_node.parent == nil then
+                error("critical error in ore excavation data")
+            end
+            temp_node = temp_node.parent
+        end
+        while not (temp_node.parent == nil) do
+            temp_node = temp_node.parent
+            mv_xyz(temp_node:getCoordinates())
+        end
+    end
+    mv_xyz(0,0,0)
 
     orientTowards(-1,0)
 end
 
 --main program
 local function main()
-    mk_corridor_optimine(3)
+    mine()
 end
 
 main();
