@@ -13,7 +13,18 @@ local VEINMINE_IGNORE_BOUNDARIES = true
 --[[
     if true, the turtle gets rid of items not in the list of blocks to mine TODO WIP
 ]]
-local DELETE_UNWANTED_ITEMS = false
+local DELETE_UNWANTED_ITEMS = true
+--[[
+    up to which slot (including this) items can be thrown or consumed for making room in the turtle<br>
+    Used in an iteration in checkInventoryFull().<br><br>
+    <b>Why does this exist?</b><br>
+    Slots that have already been checked contain items that are non-combustible and part of the wanted resource filter. Those items will likely never leave these slots until the turtle empties at the starting point.<br>
+    The more slots are full with valuable items, the less mining operations the turtle can perform before it is full again. Also, all these slots need to be iterated over, which causes a severe time loss since changing slots is the second worst time performance limiter, first being moving.<br>
+    This value effectively forces the turtle to unload everything if only the \<this> first slots are even considered for throwing away.<br>
+    Note: This does not mean that the other slots are completely wasted, since they still have items in it that were collected until the last slot became full.<br><br>
+    Nevertheless, in the worst case the last 16-\<this> slots might contain only 1 non-relevant item. Therefore, setting this too low will force the turtle into more return trips than may be necessary. Getting closer to 0 on this value will get closer to deactivating the feature altogether.
+]]
+local MAX_INVENTORY_LOAD_FOR_DELETING = 12
 --[[
     the slot that fuel is held in<br>
     For good performance this should be 1. Other values untested.
@@ -252,7 +263,7 @@ local function refuel()
                     if not turtle.getItemCount(FUEL_SLOT) == 0 then
                         turtle.select(FUEL_SLOT)
                         turtle.transferTo(16)
-                        turtle.select(i) 
+                        turtle.select(i)
                     end
                     turtle.transferTo(FUEL_SLOT)
                     refuel()
@@ -456,8 +467,8 @@ end
     @param data the data of the block to check<br>
     @return true, if the block may be mined; false otherwise
 ]]
-local function is_block_whitelisted(data)
-    if data["tags"]["forge:ores"] then
+local function is_whitelisted(data)
+    if data["tags"] ~= nil and data["tags"]["forge:ores"] then
         return true
     end
     return false
@@ -541,20 +552,22 @@ function checkInventoryFull()
     if turtle.getItemCount(16) == 0 or current_movement_significance == 2 then
         return
     end
-    
-    --try to consume fuel stacks first, and if a slot opens up, transfer from slot 16
-    if turtle.getFuelLevel() < FUEL_CONSUMPTION_LIMIT then
-        for i = 1, 16, 1 do
-            if not (i == FUEL_SLOT) and not (turtle.getItemCount(i) == 0) then
-                turtle.select(i)
-                turtle.refuel(64)
-            end
-            if turtle.getItemCount(i) == 0 then
-                turtle.select(16)
-                turtle.transferTo(i)
-                turtle.select(FUEL_SLOT)
-                return
-            end
+    --try to consume fuel stacks, and if a slot opens up, transfer from slot 16
+    --if unwanted item disposal is turned on, also tries that
+    for i = 1, 16, 1 do
+        if i <= MAX_INVENTORY_LOAD_FOR_DELETING and turtle.getFuelLevel() < FUEL_CONSUMPTION_LIMIT and not (i == FUEL_SLOT) and not (turtle.getItemCount(i) == 0) then
+            turtle.select(i)
+            turtle.refuel(64)
+        end
+        if turtle.getItemCount(i) == 0 then
+            turtle.select(16)
+            turtle.transferTo(i)
+            turtle.select(FUEL_SLOT)
+            return
+        end
+        if (DELETE_UNWANTED_ITEMS and i <= MAX_INVENTORY_LOAD_FOR_DELETING) and (not (i == FUEL_SLOT)) and (not is_whitelisted(turtle.getItemDetail(i, true))) then
+            turtle.drop(64)
+            return
         end
     end
     turtle.select(FUEL_SLOT)
@@ -608,7 +621,7 @@ end
 ]]
 function check()
     local is_block, data = turtle.inspect()
-    if (not is_block) or (not is_block_whitelisted(data)) then
+    if (not is_block) or (not is_whitelisted(data)) then
         return
     end
     if excavation_graph == nil then
@@ -636,7 +649,7 @@ end
 ]]
 function checkUp()
     local is_block, data = turtle.inspectUp()
-    if (not is_block) or (not is_block_whitelisted(data)) then
+    if (not is_block) or (not is_whitelisted(data)) then
         return
     end
     if excavation_graph == nil then
@@ -664,7 +677,7 @@ end
 ]]
 function checkDown()
     local is_block, data = turtle.inspectDown()
-    if (not is_block) or (not is_block_whitelisted(data)) then
+    if (not is_block) or (not is_whitelisted(data)) then
         return
     end
     if excavation_graph == nil then
@@ -779,6 +792,7 @@ end
 
 --main program
 local function main()
+    turtle.select(FUEL_SLOT)
     mine()
 end
 
