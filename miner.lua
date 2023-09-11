@@ -631,7 +631,11 @@ function check()
     excavation_graph:addChild(temp)
     excavation_graph = temp
     forward()
-    cascade_checks()
+    do
+        local temp_xdir, temp_zdir = rotate_around(xdir, zdir)
+        cascade_checks()
+        orientTowards(temp_xdir, temp_zdir)
+    end
     forward()
     excavation_graph = excavation_graph.parent
     if excavation_graph == nil then --should never happen in correct implementation
@@ -653,9 +657,9 @@ function checkUp()
         return
     end
     if excavation_graph == nil then
-        excavation_graph = tree.newInstance(x, y+1, z)
+        excavation_graph = tree.newInstance(x, y, z)
     end
-    local temp = tree.newInstance(x, z)
+    local temp = tree.newInstance(x, y+1, z)
     excavation_graph:addChild(temp)
     excavation_graph = temp
     up()
@@ -681,9 +685,9 @@ function checkDown()
         return
     end
     if excavation_graph == nil then
-        excavation_graph = tree.newInstance(x, y-1, z)
+        excavation_graph = tree.newInstance(x, y, z)
     end
-    local temp = tree.newInstance(x + xdir, z + zdir)
+    local temp = tree.newInstance(x, y-1, z)
     excavation_graph:addChild(temp)
     excavation_graph = temp
     down()
@@ -793,7 +797,7 @@ end
 --main program
 local function main()
     turtle.select(FUEL_SLOT)
-    mine()
+    mk_corridor_optimine(1)
 end
 
 main();
