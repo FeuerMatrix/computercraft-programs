@@ -11,7 +11,7 @@ local DO_VEINMINE = true
 ]]
 local VEINMINE_IGNORE_BOUNDARIES = true
 --[[
-    if true, the turtle gets rid of items not in the list of blocks to mine TODO WIP
+    if true, the turtle gets rid of items not in the list of blocks to mine TODO WIP deactivation
 ]]
 local DELETE_UNWANTED_ITEMS = true
 --[[
@@ -58,7 +58,7 @@ local x, y, z = 0,0,0
 local xdir, zdir = 1,0
 
 --boundaries of the area to mine
-local bound_x, bound_yp, bound_yn, bound_zp, bound_zn = 4, 1, 1, 2, 2
+local bound_x, bound_yp, bound_yn, bound_zp, bound_zn = 2, 1, 1, 2, 2
 
 --basic implementation of a tree structure.<br>
 --Note that this is a special implementation for the vein excavation and does not necessarily behave exactly as a normal tree would.
@@ -296,6 +296,17 @@ local function checkFuelStatus()
     refuel()
 end
 
+--[[
+    calculates whether the given point is inside the boundaries defined by the bound_* variables<br>
+    @param check_x the x coordinate to check<br>
+    @param check_y the y coordinate to check<br>
+    @param check_z the z coordinate to check<br>
+    @return true, if the given point is out of bounds; false otherwise
+]]
+local function is_out_of_bounds(check_x, check_y, check_z)
+    return check_x < 0 or check_x > bound_x or check_y > bound_yp or check_y < -bound_yn or check_z > bound_zp or check_z < -bound_zn
+end
+
 --wrapper function for turtle.dig() that does necessary checks
 local function dig()
     checkInventoryFull()
@@ -468,7 +479,7 @@ end
     @return true, if the block may be mined; false otherwise
 ]]
 local function is_whitelisted(data)
-    if data["tags"] ~= nil and data["tags"]["forge:ores"] then
+    if data["tags"] and data["tags"]["forge:ores"] then
         return true
     end
     return false
@@ -621,7 +632,7 @@ end
 ]]
 function check()
     local is_block, data = turtle.inspect()
-    if (not is_block) or (not is_whitelisted(data)) then
+    if (not is_block) or (not is_whitelisted(data)) or (not VEINMINE_IGNORE_BOUNDARIES and is_out_of_bounds(x + xdir, y, z + zdir)) then
         return
     end
     if excavation_graph == nil then
@@ -653,7 +664,7 @@ end
 ]]
 function checkUp()
     local is_block, data = turtle.inspectUp()
-    if (not is_block) or (not is_whitelisted(data)) then
+    if (not is_block) or (not is_whitelisted(data)) or (not VEINMINE_IGNORE_BOUNDARIES and is_out_of_bounds(x, y+1, z)) then
         return
     end
     if excavation_graph == nil then
@@ -681,7 +692,7 @@ end
 ]]
 function checkDown()
     local is_block, data = turtle.inspectDown()
-    if (not is_block) or (not is_whitelisted(data)) then
+    if (not is_block) or (not is_whitelisted(data)) or (not VEINMINE_IGNORE_BOUNDARIES and is_out_of_bounds(x, y-1, z)) then
         return
     end
     if excavation_graph == nil then
@@ -797,7 +808,7 @@ end
 --main program
 local function main()
     turtle.select(FUEL_SLOT)
-    mk_corridor_optimine(1)
+    mine()
 end
 
 main();
