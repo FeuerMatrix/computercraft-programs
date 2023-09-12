@@ -3,15 +3,15 @@
 local DEBUG_MODE = false
 
 --[[
-whether to excavate the entire vein of found ore TODO WIP deactivation
+whether to excavate the entire vein of found ore
 ]]
 local DO_VEINMINE = true
 --[[
-    if false, the turtle makes sure to not break out of boundaries TODO WIP
+    if false, the turtle makes sure to not break out of boundaries even if ore was found
 ]]
-local VEINMINE_IGNORE_BOUNDARIES = true
+local MINING_IGNORE_BOUNDARIES = true
 --[[
-    if true, the turtle gets rid of items not in the list of blocks to mine TODO WIP deactivation
+    if true, the turtle gets rid of items not in the list of blocks to mine
 ]]
 local DELETE_UNWANTED_ITEMS = true
 --[[
@@ -632,7 +632,11 @@ end
 ]]
 function check()
     local is_block, data = turtle.inspect()
-    if (not is_block) or (not is_whitelisted(data)) or (not VEINMINE_IGNORE_BOUNDARIES and is_out_of_bounds(x + xdir, y, z + zdir)) then
+    if (not is_block) or (not is_whitelisted(data)) or (not MINING_IGNORE_BOUNDARIES and is_out_of_bounds(x + xdir, y, z + zdir)) then
+        return
+    end
+    if not DO_VEINMINE then
+        dig()
         return
     end
     if excavation_graph == nil then
@@ -664,7 +668,11 @@ end
 ]]
 function checkUp()
     local is_block, data = turtle.inspectUp()
-    if (not is_block) or (not is_whitelisted(data)) or (not VEINMINE_IGNORE_BOUNDARIES and is_out_of_bounds(x, y+1, z)) then
+    if (not is_block) or (not is_whitelisted(data)) or (not MINING_IGNORE_BOUNDARIES and is_out_of_bounds(x, y+1, z)) then
+        return
+    end
+    if not DO_VEINMINE then
+        digUp()
         return
     end
     if excavation_graph == nil then
@@ -692,7 +700,11 @@ end
 ]]
 function checkDown()
     local is_block, data = turtle.inspectDown()
-    if (not is_block) or (not is_whitelisted(data)) or (not VEINMINE_IGNORE_BOUNDARIES and is_out_of_bounds(x, y-1, z)) then
+    if (not is_block) or (not is_whitelisted(data)) or (not MINING_IGNORE_BOUNDARIES and is_out_of_bounds(x, y-1, z)) then
+        return
+    end
+    if not DO_VEINMINE then
+        digDown()
         return
     end
     if excavation_graph == nil then
