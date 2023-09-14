@@ -20,9 +20,9 @@ local DELETE_UNWANTED_ITEMS = true
     <b>Why does this exist?</b><br>
     Slots that have already been checked contain items that are non-combustible and part of the wanted resource filter. Those items will likely never leave these slots until the turtle empties at the starting point.<br>
     The more slots are full with valuable items, the less mining operations the turtle can perform before it is full again. Also, all these slots need to be iterated over, which causes a severe time loss since changing slots is the second worst time performance limiter, first being moving.<br>
-    This value effectively forces the turtle to unload everything if only the \<this> first slots are even considered for throwing away.<br>
+    This value effectively forces the turtle to unload everything once approaching that point since only the \<this> first slots are even considered for throwing away.<br>
     Note: This does not mean that the other slots are completely wasted, since they still have items in it that were collected until the last slot became full.<br><br>
-    Nevertheless, in the worst case the last 16-\<this> slots might contain only 1 non-relevant item. Therefore, setting this too low will force the turtle into more return trips than may be necessary. Getting closer to 0 on this value will get closer to deactivating the feature altogether.
+    Nevertheless, in the worst case the last 16-\<this> slots might contain only 1 non-relevant item. Therefore, setting this too low will force the turtle into more return trips than may be necessary. Getting closer to 0 on this value will get closer to deactivating the feature of making room altogether.
 ]]
 local MAX_INVENTORY_LOAD_FOR_DELETING = 12
 --[[
@@ -310,19 +310,40 @@ end
 --wrapper function for turtle.dig() that does necessary checks
 local function dig()
     checkInventoryFull()
-    turtle.dig()
+    local _, error_msg = turtle.dig()
+    if error_msg == "Cannot break unbreakable block" then
+        if current_movement_significance ~= 2 then
+            returnToStart()
+            emptyAll()
+        end
+        error("Hit unbreakable block (like bedrock)")
+    end
 end
 
 --wrapper function for turtle.digUp() that does necessary checks
 local function digUp()
     checkInventoryFull()
-    turtle.digUp()
+    local _, error_msg = turtle.digUp()
+    if error_msg == "Cannot break unbreakable block" then
+        if current_movement_significance ~= 2 then
+            returnToStart()
+            emptyAll()
+        end
+        error("Hit unbreakable block (like bedrock)")
+    end
 end
 
 --wrapper function for turtle.digDown() that does necessary checks
 local function digDown()
     checkInventoryFull()
-    turtle.digDown()
+    local _, error_msg = turtle.digDown()
+    if error_msg == "Cannot break unbreakable block" then
+        if current_movement_significance ~= 2 then
+            returnToStart()
+            emptyAll()
+        end
+        error("Hit unbreakable block (like bedrock)")
+    end
 end
 
 --[[
