@@ -53,7 +53,7 @@ local returnToMiningPosition
 do
     local temp = core.fuel_to_return
     --[[
-        @Override
+        @Override<br>
         calculates how much fuel is required to return to starting position<br>
         @return the amount of fuel needed to return
     ]]
@@ -88,6 +88,7 @@ do
     
     local temp = core.refuel
     --[[
+        @Override<br>
         refuels the turtle with following logic
         <ol>
         <li>tries to consume fuel from the fuel slot, always leaving 1 item except if the fuel is unstackable.</li>
@@ -125,6 +126,7 @@ do
     end
 
     --[[
+        @Override<br>
         checks if the turtle has a full inventory<br>
         If this is the case, the turtle will empty it. In order to do this, fuel in non-fuel-slots might be consumed.
     ]]

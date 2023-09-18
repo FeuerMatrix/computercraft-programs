@@ -1,6 +1,5 @@
+--turtle programs core by FeuerMatrix
 local M = {}
-
-
 
 DEBUG_MODE = false
 
@@ -118,7 +117,6 @@ function M:turnAround()
     self.xdir, self.zdir = self:rotate_around(self.xdir, self.zdir)
     self:logData()
 end
-
 
 --[[
     Turns the turtle so that it faces the given direction.<br>
