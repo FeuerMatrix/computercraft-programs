@@ -35,6 +35,9 @@ M.xdir, M.zdir = 1,0
 ]]
 M.current_movement_significance = 1
 
+--path to the root folder of this program bundle (only works if core is run from INSIDE this program bundle)
+M.root_path = string.match(shell.getRunningProgram(), ".-matrixscripts")
+
 --[[
     empty method<br>
     can be overridden by scripts using this library and is then used in other functions in this library

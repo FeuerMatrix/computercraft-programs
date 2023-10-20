@@ -46,6 +46,8 @@ local bound_x, bound_yp, bound_yn, bound_zp, bound_zn = 2, 1, 1, 2, 2
 --variable used for storing the excavation tree during ore excavation
 local excavation_graph
 
+--path to the filter settings file
+local filter_path = core.root_path.."/miner/filter.settings"
 
 local returnToMiningPosition
 
@@ -391,6 +393,30 @@ function returnToMiningPosition(return_x, return_y, return_z)
     end
     traceExcavationGraph(return_x, return_y, return_z, temp_node)
 end
+
+--[[
+    loads the contents of the ore filter file into the settings<br><br>
+    This clears all previously loaded settings.<br>
+    If the file doesn't exist or contents are missing, they are replaced by a default.
+]]
+local function loadOreFilter()
+    settings.clear()
+    settings.load(filter_path)
+    if not settings.get("item_whitelist") then
+        settings.set("item_whitelist", {
+            "minecraft:coal_ore",
+            "minecraft:diamond_ore",
+        })
+    end
+    
+    if not settings.get("oredict_whitelist") then
+        settings.set("oredict_whitelist", {
+            "forge:ores",
+        })
+    end
+end
+
+--TODO function that loads all settings at once (but does not allow for saving afterward)
 
 --main program
 local function main()
