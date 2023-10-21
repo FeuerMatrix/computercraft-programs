@@ -48,6 +48,9 @@ local excavation_graph
 
 --path to the filter settings file
 local filter_path = core.root_path.."/miner/filter.settings"
+--wanted item whitelist<br>
+--note: this doesn't accept oredict/tags
+local ore_whitelist
 
 local returnToMiningPosition
 
@@ -139,7 +142,7 @@ do
         --try to consume fuel stacks, and if a slot opens up, transfer from slot 16
         --if unwanted item disposal is turned on, also tries that
         for i = 1, 16, 1 do
-            if i <= MAX_INVENTORY_LOAD_FOR_DELETING and turtle.getFuelLevel() < self.UEL_CONSUMPTION_LIMIT and not (i == self.FUEL_SLOT) and not (turtle.getItemCount(i) == 0) then
+            if i <= MAX_INVENTORY_LOAD_FOR_DELETING and turtle.getFuelLevel() < self.FUEL_CONSUMPTION_LIMIT and not (i == self.FUEL_SLOT) and not (turtle.getItemCount(i) == 0) then
                 turtle.select(i)
                 turtle.refuel(64)
             end
@@ -149,7 +152,7 @@ do
                 turtle.select(self.FUEL_SLOT)
                 return
             end
-            if (DELETE_UNWANTED_ITEMS and i <= MAX_INVENTORY_LOAD_FOR_DELETING) and (not (i == self.FUEL_SLOT)) and (not self:is_whitelisted(turtle.getItemDetail(i, true))) then
+            if (DELETE_UNWANTED_ITEMS and i <= MAX_INVENTORY_LOAD_FOR_DELETING) and (not (i == self.FUEL_SLOT)) and (not self:is_whitelisted(turtle.getItemDetail(i))) then
                 turtle.drop(64)
                 return
             end
@@ -184,10 +187,7 @@ end
     @return true, if the block may be mined; false otherwise
 ]]
 local function is_whitelisted(data)
-    if data["tags"] and data["tags"]["forge:ores"] then
-        return true
-    end
-    return false
+    return ore_whitelist[data["name"]]
 end
 
 local check
@@ -402,24 +402,51 @@ end
 local function loadOreFilter()
     settings.clear()
     settings.load(filter_path)
-    if not settings.get("item_whitelist") then
-        settings.set("item_whitelist", {
-            "minecraft:coal_ore",
-            "minecraft:diamond_ore",
+
+    --sets missing or broken parts of the settings to defaults
+    if not settings.get("block_whitelist") then
+        settings.set("block_whitelist", {
+            ["minecraft:coal_ore"] = true,
+            ["minecraft:copper_ore"] = true,
+            ["minecraft:iron_ore"] = true,
+            ["minecraft:redstone_ore"] = true,
+            ["minecraft:gold_ore"] = true,
+            ["minecraft:lapis_ore"] = true,
+            ["minecraft:diamond_ore"] = true,
+            ["minecraft:emerald_ore"] = true,
+            ["minecraft:deepslate_copper_ore"] = true,
+            ["minecraft:deepslate_coal_ore"] = true,
+            ["minecraft:deepslate_iron_ore"] = true,
+            ["minecraft:deepslate_redstone_ore"] = true,
+            ["minecraft:deepslate_gold_ore"] = true,
+            ["minecraft:deepslate_lapis_ore"] = true,
+            ["minecraft:deepslate_diamond_ore"] = true,
+            ["minecraft:deepslate_emerald_ore"] = true,
+            ["minecraft:nether_gold_ore"] = true,
+            ["minecraft:nether_quartz_ore"] = true,
+            ["minecraft:ancient_debris"] = true,
+            ["minecraft:coal"] = true,
+            ["minecraft:raw_copper"] = true,
+            ["minecraft:raw_iron"] = true,
+            ["minecraft:redstone_dust"] = true,
+            ["minecraft:raw_gold"] = true,
+            ["minecraft:lapis_lazuli"] = true,
+            ["minecraft:diamond"] = true,
+            ["minecraft:emerald"] = true,
+            ["minecraft:gold_nugget"] = true,
+            ["minecraft:nether_quartz"] = true,
         })
+        settings.save(filter_path)
     end
-    
-    if not settings.get("oredict_whitelist") then
-        settings.set("oredict_whitelist", {
-            "forge:ores",
-        })
-    end
+    ore_whitelist = settings.get("block_whitelist")
 end
 
 --TODO function that loads all settings at once (but does not allow for saving afterward)
 
 --main program
 local function main()
+    loadOreFilter()
+
     turtle.select(core.FUEL_SLOT)
     mine()
 end
