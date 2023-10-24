@@ -3,8 +3,8 @@
 
 package.path = package.path .. ";../?.lua"
 local ExcavationTree = require "miner.ExcavationTree"
-local core = require "core.core"
-
+local core = require "core.turtle_core"
+local termlib = require "core.term_core"
 
 --[[
 whether to excavate the entire vein of found ore
@@ -131,6 +131,15 @@ do
     end
 
     --[[
+        Checks if the block described in the given data is whitelisted for mining. TODO editable whitelist<br>
+        @param data the data of the block to check<br>
+        @return true, if the block may be mined; false otherwise
+    ]]
+    function core:is_whitelisted(data)
+        return ore_whitelist[data["name"]]
+    end
+
+    --[[
         @Override<br>
         checks if the turtle has a full inventory<br>
         If this is the case, the turtle will empty it. In order to do this, fuel in non-fuel-slots might be consumed.
@@ -152,7 +161,7 @@ do
                 turtle.select(self.FUEL_SLOT)
                 return
             end
-            if (DELETE_UNWANTED_ITEMS and i <= MAX_INVENTORY_LOAD_FOR_DELETING) and (not (i == self.FUEL_SLOT)) and (not self:is_whitelisted(turtle.getItemDetail(i))) then
+            if (DELETE_UNWANTED_ITEMS and i <= MAX_INVENTORY_LOAD_FOR_DELETING) and (not (i == self.FUEL_SLOT)) and (not core:is_whitelisted(turtle.getItemDetail(i))) then
                 turtle.drop(64)
                 return
             end
@@ -179,15 +188,6 @@ end
 ]]
 local function is_out_of_bounds(check_x, check_y, check_z)
     return check_x < 0 or check_x > bound_x or check_y > bound_yp or check_y < -bound_yn or check_z > bound_zp or check_z < -bound_zn
-end
-
---[[
-    Checks if the block described in the given data is whitelisted for mining. TODO editable whitelist<br>
-    @param data the data of the block to check<br>
-    @return true, if the block may be mined; false otherwise
-]]
-local function is_whitelisted(data)
-    return ore_whitelist[data["name"]]
 end
 
 local check
@@ -229,7 +229,7 @@ end
 ]]
 function check()
     local is_block, data = turtle.inspect()
-    if (not is_block) or (not is_whitelisted(data)) or (not MINING_IGNORE_BOUNDARIES and is_out_of_bounds(core.x + core.xdir, core.y, core.z + core.zdir)) then
+    if (not is_block) or (not core:is_whitelisted(data)) or (not MINING_IGNORE_BOUNDARIES and is_out_of_bounds(core.x + core.xdir, core.y, core.z + core.zdir)) then
         return
     end
     if not DO_VEINMINE then
@@ -265,7 +265,7 @@ end
 ]]
 function checkUp()
     local is_block, data = turtle.inspectUp()
-    if (not is_block) or (not is_whitelisted(data)) or (not MINING_IGNORE_BOUNDARIES and is_out_of_bounds(core.x, core.y+1, core.z)) then
+    if (not is_block) or (not core:is_whitelisted(data)) or (not MINING_IGNORE_BOUNDARIES and is_out_of_bounds(core.x, core.y+1, core.z)) then
         return
     end
     if not DO_VEINMINE then
@@ -297,7 +297,7 @@ end
 ]]
 function checkDown()
     local is_block, data = turtle.inspectDown()
-    if (not is_block) or (not is_whitelisted(data)) or (not MINING_IGNORE_BOUNDARIES and is_out_of_bounds(core.x, core.y-1, core.z)) then
+    if (not is_block) or (not core:is_whitelisted(data)) or (not MINING_IGNORE_BOUNDARIES and is_out_of_bounds(core.x, core.y-1, core.z)) then
         return
     end
     if not DO_VEINMINE then
@@ -428,7 +428,7 @@ local function loadOreFilter()
             ["minecraft:coal"] = true,
             ["minecraft:raw_copper"] = true,
             ["minecraft:raw_iron"] = true,
-            ["minecraft:redstone_dust"] = true,
+            ["minecraft:redstone"] = true,
             ["minecraft:raw_gold"] = true,
             ["minecraft:lapis_lazuli"] = true,
             ["minecraft:diamond"] = true,
@@ -446,7 +446,7 @@ end
 --main program
 local function main()
     loadOreFilter()
-
+    termlib:drawTerminal()
     turtle.select(core.FUEL_SLOT)
     mine()
 end
