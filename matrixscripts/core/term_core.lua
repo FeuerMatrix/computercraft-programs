@@ -83,6 +83,7 @@ function M:selectFirstEntry(options)
     end
 end
 
+
 function M:driveMenu(options)
     local exited = false
     self:selectFirstEntry(options)
@@ -92,9 +93,9 @@ function M:driveMenu(options)
         local _, key = os.pullEvent("key")
         key = keys.getName(key);
 
-        ({
+        (({
             enter = function ()
-                ({
+                (({
                     exit = function ()
                         exited = true
                     end,
@@ -105,7 +106,7 @@ function M:driveMenu(options)
                         end
                         self:driveMenu(nextOptions)
                     end
-                })[options[self.selected_line]["type"]]()
+                })[options[self.selected_line]["type"]] or function () end)()
                 self:selectFirstEntry(options)
             end,
             down = function ()
@@ -123,11 +124,8 @@ function M:driveMenu(options)
                         return
                     end
                 end
-            end,
-            __index = function ()
-                
             end
-        })[key]()
+        })[key] or function() end)()
     end
 end
 
