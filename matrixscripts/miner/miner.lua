@@ -446,9 +446,22 @@ end
 --main program
 local function main()
     loadOreFilter()
-    termlib:drawTerminal()
+    termlib.options = {
+        {name="Miner by FireMatrix", type="label"},
+        {name="", type="label"},
+        {name="testvalue", type="bool", value=1},
+        {name="firstmenu", type="menu", value={
+            {name="Miner by FireMatrix", type="label"},
+            {name="", type="label"},
+            {name="test", type="bool", value=1}
+        }},
+        {name="testvalue", type="bool", value=1},
+        {name="This is a label!", type="label"}
+    }
+    termlib.exitName = "start program"
+    termlib:startTerminal()
     turtle.select(core.FUEL_SLOT)
-    mine()
+    --mine()
 end
 
 main();
