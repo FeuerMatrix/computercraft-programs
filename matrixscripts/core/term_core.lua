@@ -83,6 +83,30 @@ function M:selectFirstEntry(options)
     end
 end
 
+function M:driveVarChange(varArgs)
+    self.selected_line = 1
+    local exited = false
+    while not exited do
+        local argc = 1
+        local options = {varArgs}
+        if varArgs["value"]["type"] then
+            argc = argc + 1
+            options[argc] = {name="(type: "..varArgs["value"]["type"]..")", type="label"}
+        end
+        if varArgs["value"]["desc"] then
+            argc = argc + 1
+            options[argc] = {name=varArgs["value"]["desc"], type="label"}
+        end
+        self:displayOptions(options)
+        local _, key = os.pullEvent("key")
+        key = keys.getName(key);
+        (({
+            enter = function ()
+                exited = true
+            end
+        })[key] or function () end)()
+    end
+end
 
 function M:driveMenu(options)
     local exited = false
@@ -105,8 +129,12 @@ function M:driveMenu(options)
                             nextOptions[#nextOptions+1] = {name="back", type="exit"}
                         end
                         self:driveMenu(nextOptions)
+                    end,
+                    var = function ()
+                        self:driveVarChange(options[self.selected_line])
                     end
                 })[options[self.selected_line]["type"]] or function () end)()
+                
                 self:selectFirstEntry(options)
             end,
             down = function ()
