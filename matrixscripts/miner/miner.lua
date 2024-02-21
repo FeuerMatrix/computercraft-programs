@@ -449,13 +449,13 @@ local function main()
     termlib.options = {
         {name="Miner by FireMatrix", type="label"},
         {name="", type="label"},
-        {name="testvalue", type="var", value={type="int", value=1, min=1, desc="This is a description."}},
+        {name="testvalue", type="var", value={type="int", value=5, min=1, desc="This is a description."}},
         {name="firstmenu", type="menu", value={
             {name="Miner by FireMatrix", type="label"},
             {name="", type="label"},
             {name="testvalue", type="var", value={type="int", value=1, min=1, desc="This is a description."}}
         }},
-        {name="testvalue", type="var", value={type="int", value=1, min=1, desc="This is a description."}},
+        {name="testvalue", type="var", value={type="bool", value=false, desc="This is a description."}},
         {name="This is a label!", type="label"}
     }
     termlib.exitName = "start program"

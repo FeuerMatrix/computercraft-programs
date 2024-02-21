@@ -26,11 +26,10 @@ M.bottomArea = window.create(term.current(), 3, M.term_ymax-1, M.term_xmax-4, 1)
 ]]
 M.options = {}
 M.exitName = "exit terminal"
-M.auxText = "Arrow Keys to Move, Enter to Select"
 --TODO doc
 M.selected_line = 0
 
-function M:drawTerminal(text)
+function M:drawTerminal(text, auxText)
     term.clear()
     self.mainArea.clear()
     self.bottomArea.clear()
@@ -61,17 +60,17 @@ function M:drawTerminal(text)
         self.mainArea.write(value)
     end
     self.bottomArea.setCursorPos(1,1)
-    self.bottomArea.write(self.auxText)
+    self.bottomArea.write(auxText)
 end
 
 --option: name, valueType, default
-function M:displayOptions(options)
+function M:displayOptions(options, auxText)
     local text = {}
     for i, current_option in ipairs(options) do
-        text[i] = current_option["name"]
+        text[i] = current_option["name"] .. (options[i]["type"] == "var" and " | " .. tostring(options[i]["value"]["value"]) or "")
     end
 
-    self:drawTerminal(text)
+    self:drawTerminal(text, auxText)
 end
 
 function M:selectFirstEntry(options)
@@ -86,9 +85,8 @@ end
 function M:driveVarChange(varArgs)
     self.selected_line = 1
     local exited = false
-    while not exited do
-        local argc = 1
-        local options = {varArgs}
+    local argc = 1
+        local options = {{name=varArgs["name"], type="var", value={value=varArgs["value"]["value"]}}}
         if varArgs["value"]["type"] then
             argc = argc + 1
             options[argc] = {name="(type: "..varArgs["value"]["type"]..")", type="label"}
@@ -97,14 +95,24 @@ function M:driveVarChange(varArgs)
             argc = argc + 1
             options[argc] = {name=varArgs["value"]["desc"], type="label"}
         end
-        self:displayOptions(options)
+
+    while not exited do
+        self:displayOptions(options, "Backspace to Exit, Enter to Confirm")
         local _, key = os.pullEvent("key")
         key = keys.getName(key);
         (({
             enter = function ()
                 exited = true
+                varArgs["value"]["value"] = options[1]["value"]["value"]
+            end,
+            backspace = function ()
+                exited = true
             end
-        })[key] or function () end)()
+        })[key] or function ()
+            if varArgs["value"]["type"] == "bool" then
+                options[1]["value"]["value"] = not options[1]["value"]["value"]
+            end
+        end)()
     end
 end
 
@@ -112,7 +120,7 @@ function M:driveMenu(options)
     local exited = false
     self:selectFirstEntry(options)
     while not exited do
-        self:displayOptions(options)
+        self:displayOptions(options, "Arrow Keys to Move, Enter to Select")
         --look for key presses
         local _, key = os.pullEvent("key")
         key = keys.getName(key);
