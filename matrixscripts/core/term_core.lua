@@ -95,7 +95,7 @@ end
 function M:driveVarChange(varArgs)
     local exited = false
     local argc = 1
-        local options = {{name=varArgs["name"], type="var", value={value=varArgs["value"]["value"]}}}
+        local options = {{name=varArgs["name"], type="var", value={value=varArgs["value"]["value"], type=varArgs["value"]["type"]}}}
         if varArgs["value"]["type"] then
             argc = argc + 1
             options[argc] = {name="(type: "..varArgs["value"]["type"]..")", type="label"}
@@ -116,6 +116,34 @@ function M:driveVarChange(varArgs)
             end,
             delete = function ()
                 exited = true
+            end,
+            left = function ()
+                if options[1]["value"]["type"] == "bool" then
+                    options[1]["value"]["value"] = not options[1]["value"]["value"]
+                    return
+                end
+                options[1]["value"]["value"] = options[1]["value"]["value"]-1
+            end,
+            right = function ()
+                if options[1]["value"]["type"] == "bool" then
+                    options[1]["value"]["value"] = not options[1]["value"]["value"]
+                    return
+                end
+                options[1]["value"]["value"] = options[1]["value"]["value"]+1
+            end,
+            up = function ()
+                if options[1]["value"]["type"] == "bool" then
+                    options[1]["value"]["value"] = not options[1]["value"]["value"]
+                    return
+                end
+                options[1]["value"]["value"] = options[1]["value"]["value"] * -1
+            end,
+            down = function ()
+                if options[1]["value"]["type"] == "bool" then
+                    options[1]["value"]["value"] = not options[1]["value"]["value"]
+                    return
+                end
+                options[1]["value"]["value"] = options[1]["value"]["value"] * -1
             end
         })[key] or function ()
             if varArgs["value"]["type"] == "bool" then
@@ -124,11 +152,11 @@ function M:driveVarChange(varArgs)
             end
             
             if self.numkeys[key] then
-                options[1]["value"]["value"] = options[1]["value"]["value"] * 10 + self.numkeys[key]
+                options[1]["value"]["value"] = options[1]["value"]["value"] * 10 + (options[1]["value"]["value"] < 0 and self.numkeys[key] * -1 or self.numkeys[key])
                 return
             end
             if key == "backspace" then
-                options[1]["value"]["value"] = math.floor(options[1]["value"]["value"]/10)
+                options[1]["value"]["value"] = math.modf(options[1]["value"]["value"]/10)
             end
         end)()
     end
@@ -175,6 +203,24 @@ function M:driveMenu(options)
                         selected_line = i
                         return
                     end
+                end
+            end,
+            left = function ()
+                if options[selected_line]["type"] == "var" then
+                    if options[selected_line]["value"]["type"] == "bool" then
+                        options[selected_line]["value"]["value"] = not options[selected_line]["value"]["value"]
+                        return
+                    end
+                    options[selected_line]["value"]["value"] = options[selected_line]["value"]["value"]-1
+                end
+            end,
+            right = function ()
+                if options[selected_line]["type"] == "var" then
+                    if options[selected_line]["value"]["type"] == "bool" then
+                        options[selected_line]["value"]["value"] = not options[selected_line]["value"]["value"]
+                        return
+                    end
+                    options[selected_line]["value"]["value"] = options[selected_line]["value"]["value"]+1
                 end
             end
         })[key] or function() end)()
