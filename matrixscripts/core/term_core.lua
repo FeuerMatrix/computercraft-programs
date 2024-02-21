@@ -28,6 +28,18 @@ M.options = {}
 M.exitName = "exit terminal"
 --TODO doc
 M.selected_line = 0
+M.numkeys = {
+    zero=0,
+    one=1,
+    two=2,
+    three=3,
+    four=4,
+    five=5,
+    six=6,
+    seven=7,
+    eight=8,
+    nine=9
+}
 
 function M:drawTerminal(text, auxText)
     term.clear()
@@ -97,7 +109,7 @@ function M:driveVarChange(varArgs)
         end
 
     while not exited do
-        self:displayOptions(options, "Backspace to Exit, Enter to Confirm")
+        self:displayOptions(options, "  Enter to Select, Delete to Exit")
         local _, key = os.pullEvent("key")
         key = keys.getName(key);
         (({
@@ -105,12 +117,21 @@ function M:driveVarChange(varArgs)
                 exited = true
                 varArgs["value"]["value"] = options[1]["value"]["value"]
             end,
-            backspace = function ()
+            delete = function ()
                 exited = true
             end
         })[key] or function ()
             if varArgs["value"]["type"] == "bool" then
                 options[1]["value"]["value"] = not options[1]["value"]["value"]
+                return
+            end
+            
+            if self.numkeys[key] then
+                options[1]["value"]["value"] = options[1]["value"]["value"] * 10 + self.numkeys[key]
+                return
+            end
+            if key == "backspace" then
+                options[1]["value"]["value"] = math.floor(options[1]["value"]["value"]/10)
             end
         end)()
     end
@@ -165,6 +186,7 @@ function M:driveMenu(options)
     end
 end
 
+--the set that options points to will be permutated with changed variable values
 function M:startTerminal()
     local options = self.options
     options[#options+1] = {name=self.exitName, type="exit"}
