@@ -39,7 +39,7 @@ M.numkeys = {
     nine=9
 }
 
-function M:drawTerminal(text, auxText, selected_line)
+function M:drawTerminal(text, auxText, selected_line, firstDisplayedLine)
     term.clear()
     self.mainArea.clear()
     self.bottomArea.clear()
@@ -60,32 +60,32 @@ function M:drawTerminal(text, auxText, selected_line)
         self.border_right.write("|")
     end
 
-    for index, value in ipairs(text) do
-        self.mainArea.setCursorPos(1,index)
-        if selected_line == index then
+    for i = firstDisplayedLine, firstDisplayedLine+9, 1 do
+        self.mainArea.setCursorPos(1,i-firstDisplayedLine+1)
+        if selected_line == i then
             self.mainArea.setTextColor(colors.white)
         else
             self.mainArea.setTextColor(colors.lime)
         end
-        self.mainArea.write(value)
+        self.mainArea.write(text[i])
     end
     self.bottomArea.setCursorPos(1,1)
     self.bottomArea.write(auxText)
 end
 
 --option: name, valueType, default
-function M:displayOptions(options, auxText, selected_line)
+function M:displayOptions(options, auxText, selected_line, firstDisplayedLine)
     local text = {}
-    for i, current_option in ipairs(options) do
-        text[i] = current_option["name"] .. (options[i]["type"] == "var" and " | " .. tostring(options[i]["value"]["value"]) or "")
+    for i = firstDisplayedLine, firstDisplayedLine+9, 1 do
+        text[i] = options[i]["name"] .. (options[i]["type"] == "var" and " | " .. tostring(options[i]["value"]["value"]) or "")
     end
 
-    self:drawTerminal(text, auxText, selected_line)
+    self:drawTerminal(text, auxText, selected_line, firstDisplayedLine)
 end
 
 function M:getFirstSelectableIndex(options)
     for i = 1, #options, 1 do
-        if options[i]["type"] ~= "label" then
+        if not options[i]["unselectable"] then
             return i
         end
     end
@@ -106,7 +106,7 @@ function M:driveVarChange(varArgs)
         end
 
     while not exited do
-        self:displayOptions(options, "   Enter to Save, Delete to Exit", 1)
+        self:displayOptions(options, "   Enter to Save, Delete to Exit", 1, 1)
         local _, key = os.pullEvent("key")
         key = keys.getName(key);
         (({
@@ -164,9 +164,10 @@ end
 
 function M:driveMenu(options)
     local exited = false
+    local firstDisplayedLine = 1
     local selected_line = self:getFirstSelectableIndex(options)
     while not exited do
-        self:displayOptions(options, "Arrow Keys to Move, Enter to Select", selected_line)
+        self:displayOptions(options, "Arrow Keys to Move, Enter to Select", selected_line, firstDisplayedLine)
         --look for key presses
         local _, key = os.pullEvent("key")
         key = keys.getName(key);
@@ -191,16 +192,30 @@ function M:driveMenu(options)
             end,
             down = function ()
                 for i = selected_line+1, #options, 1 do
-                    if options[i]["type"] ~= "label" then
+                    if not options[i]["unselectable"] then
                         selected_line = i
+                        if selected_line > firstDisplayedLine + 8 then
+                            if selected_line ~= #options then
+                                firstDisplayedLine = selected_line - 8
+                                return
+                            end
+                            firstDisplayedLine = selected_line - 9
+                        end
                         return
                     end
                 end
             end,
             up = function ()
                 for i = selected_line-1, 1, -1 do
-                    if options[i]["type"] ~= "label" then
+                    if not options[i]["unselectable"] then
                         selected_line = i
+                        if selected_line <= firstDisplayedLine then
+                            if selected_line ~= 1 then
+                                firstDisplayedLine = selected_line - 1
+                                return
+                            end
+                            firstDisplayedLine = selected_line
+                        end
                         return
                     end
                 end
