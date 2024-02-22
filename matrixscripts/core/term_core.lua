@@ -60,7 +60,7 @@ function M:drawTerminal(text, auxText, selected_line, firstDisplayedLine)
         self.border_right.write("|")
     end
 
-    for i = firstDisplayedLine, firstDisplayedLine+9, 1 do
+    for i = firstDisplayedLine, #text, 1 do
         self.mainArea.setCursorPos(1,i-firstDisplayedLine+1)
         if selected_line == i then
             self.mainArea.setTextColor(colors.white)
@@ -76,7 +76,10 @@ end
 --option: name, valueType, default
 function M:displayOptions(options, auxText, selected_line, firstDisplayedLine)
     local text = {}
-    for i = firstDisplayedLine, firstDisplayedLine+9, 1 do
+    for i = firstDisplayedLine, math.min(firstDisplayedLine+9), 1 do
+        if not options[i] then
+            break
+        end
         text[i] = options[i]["name"] .. (options[i]["type"] == "var" and " | " .. tostring(options[i]["value"]["value"]) or "")
     end
 
@@ -204,6 +207,19 @@ function M:driveMenu(options)
                         return
                     end
                 end
+                for i = 1, selected_line, 1 do
+                    if not options[i]["unselectable"] then
+                        selected_line = i
+                        if selected_line <= firstDisplayedLine then
+                            if selected_line ~= 1 then
+                                firstDisplayedLine = selected_line - 1
+                                return
+                            end
+                            firstDisplayedLine = selected_line
+                        end
+                        return
+                    end
+                end
             end,
             up = function ()
                 for i = selected_line-1, 1, -1 do
@@ -215,6 +231,19 @@ function M:driveMenu(options)
                                 return
                             end
                             firstDisplayedLine = selected_line
+                        end
+                        return
+                    end
+                end
+                for i = #options, selected_line, -1 do
+                    if not options[i]["unselectable"] then
+                        selected_line = i
+                        if selected_line > firstDisplayedLine + 8 then
+                            if selected_line ~= #options then
+                                firstDisplayedLine = selected_line - 8
+                                return
+                            end
+                            firstDisplayedLine = selected_line - 9
                         end
                         return
                     end
