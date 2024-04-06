@@ -39,7 +39,10 @@ M.numkeys = {
     nine=9
 }
 
-function M:drawTerminal(text, auxText, selected_line, firstDisplayedLine)
+--[[
+    @param selected_line_relative the index of the currently selected line, relative to the first displayed line. Therefore, this is the actual line index in the main area terminal window and not the selected option index.
+]]
+function M:drawTerminal(text, auxText, selected_line_relative)
     term.clear()
     self.mainArea.clear()
     self.bottomArea.clear()
@@ -59,10 +62,11 @@ function M:drawTerminal(text, auxText, selected_line, firstDisplayedLine)
         self.border_right.setCursorPos(1,i)
         self.border_right.write("|")
     end
-
-    for i = firstDisplayedLine, #text, 1 do
-        self.mainArea.setCursorPos(1,i-firstDisplayedLine+1)
-        if selected_line == i then
+    self.border_down.setCursorPos(1,1)--
+    self.border_down.write(#text)
+    for i = 1, #text, 1 do
+        self.mainArea.setCursorPos(1,i)
+        if selected_line_relative == i then
             self.mainArea.setTextColor(colors.white)
         else
             self.mainArea.setTextColor(colors.lime)
@@ -76,14 +80,14 @@ end
 --option: name, valueType, default
 function M:displayOptions(options, auxText, selected_line, firstDisplayedLine)
     local text = {}
-    for i = firstDisplayedLine, math.min(firstDisplayedLine+9), 1 do
+    for i = firstDisplayedLine, firstDisplayedLine+9, 1 do
         if not options[i] then
             break
         end
-        text[i] = options[i]["name"] .. (options[i]["type"] == "var" and " | " .. tostring(options[i]["value"]["value"]) or "")
+        text[i-firstDisplayedLine+1] = options[i]["name"] .. (options[i]["type"] == "var" and " | " .. tostring(options[i]["value"]["value"]) or "")
     end
 
-    self:drawTerminal(text, auxText, selected_line, firstDisplayedLine)
+    self:drawTerminal(text, auxText, selected_line-firstDisplayedLine+1)
 end
 
 function M:getFirstSelectableIndex(options)
@@ -170,7 +174,9 @@ function M:driveMenu(options)
     local firstDisplayedLine = 1
     local selected_line = self:getFirstSelectableIndex(options)
     while not exited do
-        self:displayOptions(options, "Arrow Keys to Move, Enter to Select", selected_line, firstDisplayedLine)
+        self:displayOptions(options, "Press I for more info", selected_line, firstDisplayedLine)
+        self.border_up.setCursorPos(1,1)
+        self.border_up.write(selected_line .. " " .. firstDisplayedLine .. " " .. tostring(not not options[selected_line]))
         --look for key presses
         local _, key = os.pullEvent("key")
         key = keys.getName(key);
@@ -192,6 +198,35 @@ function M:driveMenu(options)
                         self:driveVarChange(options[selected_line])
                     end
                 })[options[selected_line]["type"]] or function () end)()
+            end,
+            i = function ()
+                if not options[1]["isInfo"] then
+                    self:driveMenu({
+                        {name="TermLib by FireMatrix", type="label", unselectable=true, isInfo = true},
+                        {name="- navigation -", type="label"},
+                        {name="+ menu scrolls up and down to", type="label", unselectable=true},
+                        {name="  reveal options!", type="label", unselectable=true},
+                        {name="+ navigate: up/down arrow", type="label", unselectable=true},
+                        {name="+ select option: enter", type="label", unselectable=true},
+                        {name="- quick value change -", type="label"},
+                        {name="+ left/right arrow over item:", type="label", unselectable=true},
+                        {name="  toggle bools or inc/dec numbers", type="label", unselectable=true},
+                        {name="- value menu -", type="label"},
+                        {name="+ left/right arrow: toggle bools or", type="label", unselectable=true},
+                        {name="  inc/dec numbers", type="label", unselectable=true},
+                        {name="+ up/down arrow: toggle bools or", type="label", unselectable=true},
+                        {name="  invert sign", type="label", unselectable=true},
+                        {name="- -----", type="label"},
+                        {name="+ number key: enter digit to the", type="label", unselectable=true},
+                        {name="  right", type="label", unselectable=true},
+                        {name="+ backspace: remove digit from", type="label", unselectable=true},
+                        {name="  right", type="label", unselectable=true},
+                        {name="- -----", type="label"},
+                        {name="+ enter: save changes and return", type="label", unselectable=true},
+                        {name="+ delete: return without saving", type="label", unselectable=true},
+                        {name="back", type="exit"}
+                    })
+                end
             end,
             down = function ()
                 for i = selected_line+1, #options, 1 do
