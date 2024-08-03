@@ -102,7 +102,7 @@ end
 function M:driveVarChange(varArgs)
     local exited = false
     local argc = 1
-        local options = {{name=varArgs["name"], type="var", value={value=varArgs["value"]["value"], type=varArgs["value"]["type"]}}}
+        local options = {{name=varArgs["name"], type="var", value={value=varArgs["value"]["value"], min=varArgs["value"]["min"], max=varArgs["value"]["max"], type=varArgs["value"]["type"]}}}
         if varArgs["value"]["type"] then
             argc = argc + 1
             options[argc] = {name="(type: "..varArgs["value"]["type"]..")", type="label"}
@@ -153,19 +153,27 @@ function M:driveVarChange(varArgs)
                 options[1]["value"]["value"] = options[1]["value"]["value"] * -1
             end
         })[key] or function ()
+            local currentVar = options[1]["value"]
             if varArgs["value"]["type"] == "bool" then
-                options[1]["value"]["value"] = not options[1]["value"]["value"]
+                currentVar["value"] = not currentVar["value"]
                 return
             end
             
             if self.numkeys[key] then
-                options[1]["value"]["value"] = options[1]["value"]["value"] * 10 + (options[1]["value"]["value"] < 0 and self.numkeys[key] * -1 or self.numkeys[key])
+                currentVar["value"] = currentVar["value"] * 10 + (currentVar["value"] < 0 and self.numkeys[key] * -1 or self.numkeys[key])
                 return
             end
             if key == "backspace" then
-                options[1]["value"]["value"] = math.modf(options[1]["value"]["value"]/10)
+                currentVar["value"] = math.modf(currentVar["value"]/10)
             end
         end)()
+        
+        local currentVar = options[1]["value"]
+        if currentVar["max"] ~= nil and currentVar["max"] < currentVar["value"] then
+            currentVar["value"] = currentVar["max"]
+        elseif currentVar["min"] ~= nil and currentVar["min"] > currentVar["value"] then
+            currentVar["value"] = currentVar["min"]
+        end
     end
 end
 
@@ -286,20 +294,28 @@ function M:driveMenu(options)
             end,
             left = function ()
                 if options[selected_line]["type"] == "var" then
-                    if options[selected_line]["value"]["type"] == "bool" then
-                        options[selected_line]["value"]["value"] = not options[selected_line]["value"]["value"]
+                    local currentVar = options[selected_line]["value"]
+                    if currentVar["type"] == "bool" then
+                        currentVar["value"] = not currentVar["value"]
                         return
                     end
-                    options[selected_line]["value"]["value"] = options[selected_line]["value"]["value"]-1
+                    currentVar["value"] = currentVar["value"]-1
+                    if currentVar["min"] ~= nil and currentVar["min"] > currentVar["value"] then
+                        currentVar["value"] = currentVar["min"]
+                    end
                 end
             end,
             right = function ()
                 if options[selected_line]["type"] == "var" then
-                    if options[selected_line]["value"]["type"] == "bool" then
-                        options[selected_line]["value"]["value"] = not options[selected_line]["value"]["value"]
+                    local currentVar = options[selected_line]["value"]
+                    if currentVar["type"] == "bool" then
+                        currentVar["value"] = not currentVar["value"]
                         return
                     end
-                    options[selected_line]["value"]["value"] = options[selected_line]["value"]["value"]+1
+                    currentVar["value"] = currentVar["value"]+1
+                    if currentVar["max"] ~= nil and currentVar["max"] < currentVar["value"] then
+                        currentVar["value"] = currentVar["max"]
+                    end
                 end
             end
         })[key] or function() end)()
