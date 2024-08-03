@@ -9,15 +9,15 @@ local termlib = require "core.term_core"
 --[[
 whether to excavate the entire vein of found ore
 ]]
-local DO_VEINMINE = true
+local DO_VEINMINE
 --[[
     if false, the turtle makes sure to not break out of boundaries even if ore was found
 ]]
-local MINING_IGNORE_BOUNDARIES = true
+local MINING_IGNORE_BOUNDARIES
 --[[
     if true, the turtle gets rid of items not in the list of blocks to mine
 ]]
-local DELETE_UNWANTED_ITEMS = true
+local DELETE_UNWANTED_ITEMS
 --[[
     up to which slot (including this) items can be thrown or consumed for making room in the turtle<br>
     Used in an iteration in checkInventoryFull().<br><br>
@@ -41,13 +41,17 @@ local SHAFT_OFFSET_HORIZONTAL = 5
 local SHAFT_OFFSET_ON_NEXT_Y = 2
 
 --boundaries of the area to mine
-local bound_x, bound_yp, bound_yn, bound_zp, bound_zn = 2, 1, 1, 2, 2
+local bound_x, bound_yp, bound_yn, bound_zp, bound_zn
 
 --variable used for storing the excavation tree during ore excavation
 local excavation_graph
 
 --path to the filter settings file
 local filter_path = core.root_path.."/miner/filter.settings"
+
+--path to the standard settings file
+local settings_path = core.root_path.."/miner/miner.settings"
+
 --wanted item whitelist<br>
 --note: this doesn't accept oredict/tags
 local ore_whitelist
@@ -446,9 +450,56 @@ end
 --main program
 local function main()
     loadOreFilter()
-    
+    settings.clear()
+    settings.load(settings_path)
+    termlib.options = {
+        {name="Miner by FireMatrix", type="label", unselectable=true},
+        {name="", type="label", unselectable=true},
+        {name="boundaries", type="menu", value={
+            {name="Miner by FireMatrix", type="label", unselectable=true},
+            {name="", type="label", unselectable=true},
+            {name="x", type="var", value={type="int", value=settings.get("x", 5), min=0, desc="How far the Miner should go forward"}},
+            {name="y positive", type="var", value={type="int", value=settings.get("yp", 5), min=0, desc="How far the Miner should go up"}},
+            {name="y negative", type="var", value={type="int", value=settings.get("yn", 5), min=0, desc="How far the Miner should go down"}},
+            {name="z positive", type="var", value={type="int", value=settings.get("zp", 5), min=0, desc="How far the Miner should go left"}},
+            {name="z negative", type="var", value={type="int", value=settings.get("zn", 5), min=0, desc="How far the Miner should go right"}}
+        }},
+        {name="veinmine/excavate", type="var", value={type="bool", value=settings.get("veinmine", true), desc="Whether to excavate whole veins"}},
+        {name="veinmine breaks bounds", type="var", value={type="bool", value=settings.get("boundbreak", true), desc="Whether veinmine can ignore boundaries"}},
+        {name="delete items", type="var", value={type="bool", value=settings.get("deletion", false), desc="Whether to delete items not in the filter"}},
+        {name="fast mode", type="var", value={type="bool", value=settings.get("fast", false), desc="Makes the turtle faster, but might miss veins that are only 1*1*X"}}, --TODO figure out speed diff
+    }
+    termlib.exitName = "start program"
+    termlib:startTerminal()
+
+    --sets global vars according to selected settings
+    bound_x = termlib.options[3].value[3].value.value
+    bound_yp = termlib.options[3].value[4].value.value
+    bound_yn = termlib.options[3].value[5].value.value
+    bound_zp = termlib.options[3].value[6].value.value
+    bound_zn = termlib.options[3].value[7].value.value
+    DO_VEINMINE = termlib.options[4].value.value
+    MINING_IGNORE_BOUNDARIES = termlib.options[5].value.value
+    DELETE_UNWANTED_ITEMS = termlib.options[6].value.value
+    if termlib.options[7].value.value then
+        SHAFT_OFFSET_HORIZONTAL = 8
+        SHAFT_OFFSET_ON_NEXT_Y = 3
+    end
+
+    settings.set("x", bound_x)
+    settings.set("yp", bound_yp)
+    settings.set("yn", bound_yn)
+    settings.set("zp", bound_zp)
+    settings.set("zn", bound_zn)
+    settings.set("veinmine", DO_VEINMINE)
+    settings.set("boundbreak", MINING_IGNORE_BOUNDARIES)
+    settings.set("deletion", DELETE_UNWANTED_ITEMS)
+    settings.set("fast", termlib.options[7].value.value)
+    settings.save(settings_path)
+    settings.clear()
     turtle.select(core.FUEL_SLOT)
-    --mine()
+    mine()
+    core:orientTowards(1,0)
 end
 
 main();
