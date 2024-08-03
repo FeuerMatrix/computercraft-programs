@@ -446,25 +446,7 @@ end
 --main program
 local function main()
     loadOreFilter()
-    termlib.options = {
-        {name="Miner by FireMatrix", type="label", unselectable=true},
-        {name="testvalue", type="var", value={type="int", value=5, min=1, desc="This is a description."}},
-        {name="firstmenu", type="menu", value={
-            {name="Miner by FireMatrix", type="label"},
-            {name="", type="label"},
-            {name="testvalue", type="var", value={type="int", value=1, min=1, desc="This is a description."}}
-        }},
-        {name="testvalue", type="var", value={type="bool", value=false, desc="This is a description."}},
-        {name="This is a label!", type="label", unselectable=true},
-        {name="Line 7", type="label", unselectable=true},
-        {name="Line 8", type="label", unselectable=true},
-        {name="Line 9", type="label", unselectable=true},
-        {name="Line 10", type="label"},
-        {name="Line 11", type="label", unselectable=true},
-        {name="Line 12", type="label", unselectable=true},
-    }
-    termlib.exitName = "start program"
-    termlib:startTerminal()
+    
     turtle.select(core.FUEL_SLOT)
     --mine()
 end
