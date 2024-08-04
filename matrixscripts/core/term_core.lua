@@ -108,8 +108,14 @@ function M:driveVarChange(varArgs)
             options[argc] = {name="(type: "..varArgs["value"]["type"]..")", type="label"}
         end
         if varArgs["value"]["desc"] then
+            local workStr = varArgs["value"]["desc"]
+            while #workStr > self.mainArea.getSize() do
+                argc = argc + 1
+                options[argc] = {name=workStr:sub(1, self.mainArea.getSize()), type="label"}
+                workStr = workStr:sub(self.mainArea.getSize()+1, #workStr)
+            end
             argc = argc + 1
-            options[argc] = {name=varArgs["value"]["desc"], type="label"}
+            options[argc] = {name=workStr, type="label"}
         end
 
     while not exited do
@@ -328,5 +334,7 @@ function M:startTerminal()
     options[#options+1] = {name=self.exitName, type="exit"}
 
     self:driveMenu(options)
+    term.clear()
+    term.setCursorPos(1,1)
 end
 return M

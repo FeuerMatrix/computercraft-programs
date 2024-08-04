@@ -497,6 +497,7 @@ local function main()
     settings.set("fast", termlib.options[7].value.value)
     settings.save(settings_path)
     settings.clear()
+    
     turtle.select(core.FUEL_SLOT)
     mine()
     core:orientTowards(1,0)
